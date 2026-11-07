@@ -310,12 +310,18 @@
         <input class="form-control mb-2" id="ofSub">
         <label class="form-label">ติดต่อได้ที่ <span class="text-muted" style="font-weight:400">(ไม่บังคับ)</span></label>
         <input class="form-control mb-2" id="ofContact">
-        <label class="form-label">เอกสารแนบ <span class="text-muted" style="font-weight:400">(ไม่บังคับ)</span></label>
+        <label class="form-label">เอกสารแนบประกอบคำขอ <span class="text-muted" style="font-weight:400">(ไม่บังคับ — เช่น หนังสือเชิญ / โครงการ)</span></label>
         <div class="upload-wrap">
           <input type="file" class="form-control mb-1" id="ofAttach" accept="image/*,application/pdf">
           <div class="upload-status" id="ofAttachStatus"></div>
         </div>
         <input type="hidden" id="ofAttachId">
+        <label class="form-label mt-2">หนังสือไปราชการ <span class="text-muted" style="font-weight:400">(ไม่บังคับ — แนบหนังสือหรือคำสั่งไปราชการ)</span></label>
+        <div class="upload-wrap">
+          <input type="file" class="form-control mb-1" id="ofOfficialOrderAttach" accept="image/*,application/pdf">
+          <div class="upload-status" id="ofOfficialOrderAttachStatus"></div>
+        </div>
+        <input type="hidden" id="ofOfficialOrderAttachId">
         <button class="btn btn-accent w-100 mt-2" id="btnSubmitOfficial">ยื่นคำขอ</button>
       </div>
 
@@ -391,7 +397,7 @@
   var HOL = { year: new Date().getFullYear(), month: new Date().getMonth() + 1, data: [] };
   var LF_HIST = [];
 
-  var GAS_URL = 'https://script.google.com/macros/s/AKfycbxuIqtwKA-FiXSRB11ed5u2O7qORGTMJFrlc1ynUi9sBkNjuI4hBKjKbjM_o3UUTz-D/exec';
+  var GAS_URL = 'https://script.google.com/macros/s/AKfycbw-Dz-7LKc0fMXIMZXzC7RyHmlGAbofVDOVf4c5Jbn0aYNNmN4av9HomtJdna5Yd-lBEA/exec';
 
   function api(fn){
     var args = Array.prototype.slice.call(arguments, 1);
@@ -485,6 +491,7 @@
 
     $('#btnSubmitOfficial').on('click', submitOfficial);
     $('#ofAttach').on('change', uploadOfficialAttach);
+    $('#ofOfficialOrderAttach').on('change', uploadOfficialOrderAttach);
   });
 
   /** แนบเอกสารประกอบคำขอออกนอกโรงเรียน (เช่น หนังสือเชิญ / คำสั่งไปราชการ) */
@@ -626,6 +633,36 @@
     reader.readAsDataURL(file);
   }
 
+
+  /** แนบหนังสือไปราชการแยกจากเอกสารประกอบคำขอ */
+  function uploadOfficialOrderAttach(ev){
+    var file = ev.target.files[0];
+    if(!file){ $('#ofOfficialOrderAttachId').val(''); $('#ofOfficialOrderAttachStatus').text(''); return; }
+    if(file.size > 5*1024*1024){
+      toast('error','ไฟล์หนังสือไปราชการใหญ่เกิน 5MB');
+      ev.target.value = ''; $('#ofOfficialOrderAttachId').val(''); $('#ofOfficialOrderAttachStatus').text(''); return;
+    }
+    var reader = new FileReader();
+    reader.onload = function(e){
+      var base64 = e.target.result.split(',')[1];
+      $('#ofOfficialOrderAttachStatus').text('กำลังอัปโหลดหนังสือไปราชการ...');
+      $('#btnSubmitOfficial').prop('disabled', true);
+      api('liffUploadAttachment', LF.userId, base64, file.name, file.type).then(function(r){
+        $('#btnSubmitOfficial').prop('disabled', false);
+        if(r.status === 'success'){
+          $('#ofOfficialOrderAttachId').val(r.file_id); $('#ofOfficialOrderAttachStatus').text('แนบหนังสือไปราชการแล้ว');
+        } else {
+          $('#ofOfficialOrderAttachId').val(''); $('#ofOfficialOrderAttachStatus').text('อัปโหลดไม่สำเร็จ');
+          toast('error', r.message || 'อัปโหลดไม่สำเร็จ');
+        }
+      }).catch(function(){
+        $('#btnSubmitOfficial').prop('disabled', false); $('#ofOfficialOrderAttachId').val('');
+        $('#ofOfficialOrderAttachStatus').text('อัปโหลดไม่สำเร็จ'); toast('error','อัปโหลดไม่สำเร็จ');
+      });
+    };
+    reader.readAsDataURL(file);
+  }
+
   /* ── ไปราชการ ── */
   function prefillOfficialForm(){
     var today = new Date().toISOString().substring(0, 10);
@@ -638,6 +675,7 @@
     var attachId = $('#ofAttachId').val();
     var obj = {
       attachment_file_ids: attachId ? [attachId] : [],
+      official_order_file_id: $('#ofOfficialOrderAttachId').val() || '',
       trip_type: $('#ofTripType').val(),
       event_name: $('#ofEventName').val().trim(),
       organizer: $('#ofOrganizer').val().trim(),
@@ -660,6 +698,7 @@
       Swal.fire({ icon:'success', title:'ยื่นคำขอแล้ว', text:'เลขที่ ' + r.request_no, timer:2200, showConfirmButton:false });
       $('#ofTripType').val(''); $('#ofEventName,#ofOrganizer,#ofDest,#ofTransport,#ofFunding,#ofSub,#ofContact').val('');
       $('#ofAttach').val(''); $('#ofAttachId').val(''); $('#ofAttachStatus').text('');
+      $('#ofOfficialOrderAttach').val(''); $('#ofOfficialOrderAttachId').val(''); $('#ofOfficialOrderAttachStatus').text('');
       loadOfficialHistory();
     }).catch(function(err){
       setBtnLoading('#btnSubmitOfficial', false);
@@ -691,6 +730,10 @@
                   return '<a href="https://drive.google.com/file/d/' + fid + '/view" target="_blank" rel="noopener">'
                        + '<i class="fi fi-rr-clip me-1">\x3c/i>เอกสารแนบ\x3c/a>';
                 }).join(' · ') + '\x3c/div>'
+              : '')
+          + (d.official_order_file_id
+              ? '<div class="small mt-1"><a href="https://drive.google.com/file/d/' + d.official_order_file_id + '/view" target="_blank" rel="noopener">'
+                + '<i class="fi fi-rr-document me-1">\x3c/i>หนังสือไปราชการ</a></div>'
               : '')
           + '\x3c/div>';
       });
