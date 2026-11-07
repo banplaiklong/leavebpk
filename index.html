@@ -310,13 +310,13 @@
         <input class="form-control mb-2" id="ofSub">
         <label class="form-label">ติดต่อได้ที่ <span class="text-muted" style="font-weight:400">(ไม่บังคับ)</span></label>
         <input class="form-control mb-2" id="ofContact">
-        <label class="form-label">เอกสารแนบ <span class="text-muted" style="font-weight:400">ตารางสอนแทน/เอกสารอื่นๆ</span></label>
+        <label class="form-label">เอกสารแนบ <span class="text-muted" style="font-weight:400">(ตารางสอนแทน/เอกสารอื่นๆ)</span></label>
         <div class="upload-wrap">
           <input type="file" class="form-control mb-1" id="ofAttach" accept="image/*,application/pdf">
           <div class="upload-status" id="ofAttachStatus"></div>
         </div>
         <input type="hidden" id="ofAttachId">
-        <label class="form-label mt-2">แนบหนังสือไปราชการ<span class="text-muted" style="font-weight:400">(แนบหนังสือ/หนังสือเชิญ/โครงการ/คำสั่งไปราชการ)</span></label>
+        <label class="form-label mt-2">แนบหนังสือไปราชการ <span class="text-muted" style="font-weight:400">(หนังสือเชิญ/โครงการ/คำสั่งไปราชการ)</span></label>
         <div class="upload-wrap">
           <input type="file" class="form-control mb-1" id="ofOfficialOrderAttach" accept="image/*,application/pdf">
           <div class="upload-status" id="ofOfficialOrderAttachStatus"></div>
@@ -590,7 +590,7 @@
           + ((d.attachment_file_ids || []).length
               ? '<div class="small mt-1">' + d.attachment_file_ids.map(function(fid){
                   return '<a href="https://drive.google.com/file/d/' + fid + '/view" target="_blank" rel="noopener">'
-                       + '<i class="fi fi-rr-clip me-1">\x3c/i>เอกสารแนบ (ตารางสอนแทน/อื่นๆ)\x3c/a>';
+                       + '<i class="fi fi-rr-clip me-1">\x3c/i>เอกสารแนบ\x3c/a>';
                 }).join(' · ') + '\x3c/div>'
               : '')
           + '\x3c/div>';
@@ -728,7 +728,7 @@
           + ((d.attachment_file_ids || []).length
               ? '<div class="small mt-1">' + d.attachment_file_ids.map(function(fid){
                   return '<a href="https://drive.google.com/file/d/' + fid + '/view" target="_blank" rel="noopener">'
-                       + '<i class="fi fi-rr-clip me-1">\x3c/i>เอกสารแนบ (ตารางสอนแทน/อื่นๆ)\x3c/a>';
+                       + '<i class="fi fi-rr-clip me-1">\x3c/i>เอกสารแนบ\x3c/a>';
                 }).join(' · ') + '\x3c/div>'
               : '')
           + (d.official_order_file_id
