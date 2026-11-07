@@ -228,7 +228,7 @@
         <textarea class="form-control mb-2" id="nlReason" rows="2"></textarea>
         <label class="form-label">ผู้ติดต่อระหว่างลา</label>
         <input class="form-control mb-2" id="nlContact">
-        <label class="form-label">เอกสารแนบ <span class="text-danger" id="nlAttachReq"></span></label>
+        <label class="form-label">เอกสารแนบ <span class="text-danger" id="nlAttachReq"></span>(ตารางสอนแทน/อื่นๆ)</label>
         <div class="upload-wrap">
           <input type="file" class="form-control mb-1" id="nlAttach" accept="image/*,application/pdf">
           <div class="upload-bar" id="uploadBar"><div class="upload-bar-fill"></div></div>
@@ -261,11 +261,9 @@
         <textarea class="form-control mb-2" id="otReason" rows="2" placeholder="เช่น ไปติดต่อราชการที่สำนักงานเขตพื้นที่"></textarea>
         <label class="form-label">สถานที่ที่ไป</label>
         <input class="form-control mb-2" id="otDest" placeholder="เช่น สพม.ประจวบคีรีขันธ์">
-        <label class="form-label">ผู้สอนแทน / ผู้ปฏิบัติหน้าที่แทน</label>
-        <input class="form-control mb-2" id="otSub">
         <label class="form-label">ติดต่อได้ที่</label>
         <input class="form-control mb-2" id="otContact" placeholder="เบอร์โทรระหว่างออกนอกโรงเรียน">
-        <label class="form-label">เอกสารแนบ <span class="text-muted" style="font-weight:400">(ไม่บังคับ)</span></label>
+        <label class="form-label">เอกสารแนบ <span class="text-muted" style="font-weight:400">(ตารางสอนแทน/อื่นๆ)</span></label>
         <div class="upload-wrap">
           <input type="file" class="form-control mb-1" id="otAttach" accept="image/*,application/pdf">
           <div class="upload-status" id="otAttachStatus"></div>
@@ -308,13 +306,13 @@
         <input class="form-control mb-2" id="ofFunding" placeholder="เช่น เบิกจากต้นสังกัด">
         <label class="form-label">ติดต่อได้ที่ <span class="text-muted" style="font-weight:400">(ไม่บังคับ)</span></label>
         <input class="form-control mb-2" id="ofContact">
-        <label class="form-label">เอกสารแนบ <span class="text-muted" style="font-weight:400">(ตารางสอนแทน/อื่นๆ)</span></label>
+        <label class="form-label">เอกสารแนบประกอบคำขอ <span class="text-muted" style="font-weight:400">(ตารางสอนแทน/อื่น)</span></label>
         <div class="upload-wrap">
           <input type="file" class="form-control mb-1" id="ofAttach" accept="image/*,application/pdf">
           <div class="upload-status" id="ofAttachStatus"></div>
         </div>
         <input type="hidden" id="ofAttachId">
-        <label class="form-label mt-2">เอกสารแนบหนังสือไปราชการ <span class="text-muted" style="font-weight:400">(แนบหนังสือเชิญ/คำสั่งไปราชการ)</span></label>
+        <label class="form-label mt-2">หนังสือไปราชการ <span class="text-muted" style="font-weight:400">(หนังสือเชิญหรือคำสั่งไปราชการ)</span></label>
         <div class="upload-wrap">
           <input type="file" class="form-control mb-1" id="ofOfficialOrderAttach" accept="image/*,application/pdf">
           <div class="upload-status" id="ofOfficialOrderAttachStatus"></div>
@@ -545,7 +543,6 @@
       end_time: $('#otEndTime').val(),
       reason: $('#otReason').val().trim(),
       destination: $('#otDest').val().trim(),
-      substitute: $('#otSub').val().trim(),
       contact_during_leave: $('#otContact').val().trim()
     };
     if(!obj.reason){ toast('error','กรุณาระบุเหตุผล'); return; }
@@ -556,7 +553,7 @@
       setBtnLoading('#btnSubmitOuting', false);
       if(r.status !== 'success'){ toast('error', r.message); return; }
       Swal.fire({ icon:'success', title:'ยื่นคำขอแล้ว', text:'เลขที่ ' + r.request_no, timer:2200, showConfirmButton:false });
-      $('#otReason,#otDest,#otSub,#otContact').val('');
+      $('#otReason,#otDest,#otContact').val('');
       $('#otMulti').prop('checked', false); $('#otEndBox').addClass('hidden'); $('#otEnd').val('');
       $('#otAttach').val(''); $('#otAttachId').val(''); $('#otAttachStatus').text('');
       loadOutingHistory();
@@ -584,7 +581,7 @@
           + '\x3c/div>'
           + '<div class="small text-muted">' + when + '\x3c/div>'
           + '<div class="small text-muted">' + esc(d.reason || '') + '\x3c/div>'
-          + '<div class="small text-muted">เลขที่ ' + esc(d.request_no) + (d.substitute ? ' · ผู้สอนแทน ' + esc(d.substitute) : '') + '\x3c/div>'
+          + '<div class="small text-muted">เลขที่ ' + esc(d.request_no) + '\x3c/div>'
           + ((d.attachment_file_ids || []).length
               ? '<div class="small mt-1">' + d.attachment_file_ids.map(function(fid){
                   return '<a href="https://drive.google.com/file/d/' + fid + '/view" target="_blank" rel="noopener">'
