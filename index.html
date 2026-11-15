@@ -823,8 +823,8 @@
           '@media screen{body{padding:0!important;margin:0!important;}*{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}',
           '</style>'
         ].join('');
-        if (/<\\/head>/i.test(previewHtml)) {
-          previewHtml = previewHtml.replace(/<\\/head>/i, responsiveStyle + '</head>');
+        if (/<\/head>/i.test(previewHtml)) {
+          previewHtml = previewHtml.replace(/<\/head>/i, responsiveStyle + '</head>');
         } else {
           previewHtml = responsiveStyle + previewHtml;
         }
@@ -844,10 +844,10 @@
           'window.addEventListener("load",fitA4);window.addEventListener("resize",fitA4);',
           'if(document.fonts&&document.fonts.ready){document.fonts.ready.then(fitA4);}',
           'setTimeout(fitA4,250);setTimeout(fitA4,900);',
-          '})();</script>'
+          '})();<\/script>'
         ].join('');
-        if (/<\\/body>/i.test(previewHtml)) {
-          previewHtml = previewHtml.replace(/<\\/body>/i, fitScript + '</body>');
+        if (/<\/body>/i.test(previewHtml)) {
+          previewHtml = previewHtml.replace(/<\/body>/i, fitScript + '</body>');
         } else {
           previewHtml += fitScript;
         }
