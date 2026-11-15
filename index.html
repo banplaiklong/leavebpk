@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>ระบบลาออนไลน์</title>
   <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn-uicons.flaticon.com/2.6.0/uicons-regular-rounded/css/uicons-regular-rounded.css">
   <style>
@@ -113,6 +114,9 @@
     .upload-bar-fill{ height:100%; background:var(--brand); border-radius:3px; animation:upload-pulse 1.4s ease-in-out infinite; }
     @keyframes upload-pulse{ 0%,100%{ opacity:1; width:30%; margin-left:0; } 50%{ opacity:.8; width:60%; margin-left:40%; } }
 
+    .ce-date-visible{ background-color:#fff !important; cursor:pointer; }
+    .flatpickr-calendar{ font-family:'Prompt',sans-serif; }
+    .flatpickr-current-month input.cur-year{ font-weight:600; }
     .hidden{ display:none !important; }
     .spinner-border{ color:var(--brand); }
 
@@ -214,12 +218,12 @@
         <small class="text-muted" id="nlRemain"></small>
         <label class="form-label mt-2">วัน เวลา เริ่ม</label>
         <div class="row g-2">
-          <div class="col-6"><input type="date" class="form-control" id="nlStart"></div>
+          <div class="col-6"><input type="text" class="form-control js-ce-date" id="nlStart" placeholder="วัน/เดือน/ค.ศ." autocomplete="off" readonly></div>
           <div class="col-6"><input type="time" class="form-control" id="nlStartTime"></div>
         </div>
         <label class="form-label mt-2">วัน เวลา สิ้นสุด</label>
         <div class="row g-2">
-          <div class="col-6"><input type="date" class="form-control" id="nlEnd"></div>
+          <div class="col-6"><input type="text" class="form-control js-ce-date" id="nlEnd" placeholder="วัน/เดือน/ค.ศ." autocomplete="off" readonly></div>
           <div class="col-6"><input type="time" class="form-control" id="nlEndTime"></div>
         </div>
         <div class="day-pill my-2"><span class="small text-muted" id="nlDaysLabel">จำนวนวันลา</span><b id="nlDays">-</b></div>
@@ -244,7 +248,7 @@
       <div class="card-soft">
         <h6 class="mb-3">ขออนุญาตออกนอกบริเวณโรงเรียน</h6>
         <label class="form-label">วันที่ออก</label>
-        <input type="date" class="form-control mb-2" id="otStart">
+        <input type="text" class="form-control mb-2 js-ce-date" id="otStart" placeholder="วัน/เดือน/ค.ศ." autocomplete="off" readonly>
         <div class="row g-2">
           <div class="col-6"><label class="form-label">เวลาออก</label><input type="time" class="form-control" id="otStartTime"></div>
           <div class="col-6"><label class="form-label">เวลากลับ</label><input type="time" class="form-control" id="otEndTime"></div>
@@ -255,7 +259,7 @@
         </div>
         <div class="hidden mt-2" id="otEndBox">
           <label class="form-label">วันที่กลับ</label>
-          <input type="date" class="form-control" id="otEnd">
+          <input type="text" class="form-control js-ce-date" id="otEnd" placeholder="วัน/เดือน/ค.ศ." autocomplete="off" readonly>
         </div>
         <label class="form-label mt-2">เหตุผล</label>
         <textarea class="form-control mb-2" id="otReason" rows="2" placeholder="เช่น ไปติดต่อราชการที่สำนักงานเขตพื้นที่"></textarea>
@@ -297,8 +301,8 @@
         <label class="form-label">สถานที่</label>
         <input class="form-control mb-2" id="ofDest" placeholder="เช่น โรงแรม.......">
         <div class="row g-2">
-          <div class="col-6"><label class="form-label">วันที่เริ่ม</label><input type="date" class="form-control" id="ofStartDate"></div>
-          <div class="col-6"><label class="form-label">วันที่สิ้นสุด</label><input type="date" class="form-control" id="ofEndDate"></div>
+          <div class="col-6"><label class="form-label">วันที่เริ่ม</label><input type="text" class="form-control js-ce-date" id="ofStartDate" placeholder="วัน/เดือน/ค.ศ." autocomplete="off" readonly></div>
+          <div class="col-6"><label class="form-label">วันที่สิ้นสุด</label><input type="text" class="form-control js-ce-date" id="ofEndDate" placeholder="วัน/เดือน/ค.ศ." autocomplete="off" readonly></div>
         </div>
         <label class="form-label mt-2">พาหนะที่ใช้ <span class="text-muted" style="font-weight:400">(ไม่บังคับ)</span></label>
         <input class="form-control mb-2" id="ofTransport" placeholder="เช่น รถยนต์ส่วนตัว">
@@ -347,8 +351,8 @@
     <!-- สถิติรายบุคคล -->
     <div class="lf-body tab-pane hidden" id="tab-stats">
       <div class="d-flex justify-content-between align-items-center mb-3">
-        <h6 class="mb-0">สถิติการลา</h6>
-        <select class="form-select form-select-sm" id="statsYear" style="width:auto"></select>
+        <div><h6 class="mb-0">สถิติการลา</h6><small class="text-muted">สรุปตามปีงบประมาณ</small></div>
+        <div class="d-flex align-items-center gap-2"><label class="small text-muted" for="statsYear">ปีงบประมาณ</label><select class="form-select form-select-sm" id="statsYear" style="width:auto"></select></div>
       </div>
       <div id="statsList"></div>
     </div>
@@ -388,10 +392,76 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13"></script>
   <script>
   var LF = { userId: null, types: [], balances: {}, be: true, histStatus: '', editId: null };
   var HOL = { year: new Date().getFullYear(), month: new Date().getMonth() + 1, data: [] };
   var LF_HIST = [];
+
+  // ปฏิทินภาษาไทย แต่ใช้ปี ค.ศ. จริง (Gregorian) เสมอ
+  // ค่าที่อ่านจาก input เดิมจะยังเป็น YYYY-MM-DD เพื่อส่งให้ Apps Script โดยตรง
+  var BPK_THAI_GREGORIAN = {
+    weekdays: {
+      shorthand: ['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'],
+      longhand: ['วันอาทิตย์','วันจันทร์','วันอังคาร','วันพุธ','วันพฤหัสบดี','วันศุกร์','วันเสาร์']
+    },
+    months: {
+      shorthand: ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'],
+      longhand: ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม']
+    },
+    firstDayOfWeek: 0
+  };
+  var BPK_DATE_FIELDS = ['#nlStart','#nlEnd','#otStart','#otEnd','#ofStartDate','#ofEndDate'];
+
+  function initGregorianDatePickers(){
+    if(typeof flatpickr !== 'function') return;
+    BPK_DATE_FIELDS.forEach(function(selector){
+      var el = document.querySelector(selector);
+      if(!el || el._flatpickr) return;
+      flatpickr(el, {
+        dateFormat: 'Y-m-d',
+        altInput: true,
+        altFormat: 'd F Y',
+        altInputClass: 'form-control ce-date-visible',
+        locale: BPK_THAI_GREGORIAN,
+        allowInput: false,
+        disableMobile: true,
+        onReady: function(selectedDates, dateStr, instance){
+          if(instance.altInput){
+            instance.altInput.setAttribute('placeholder', 'วัน/เดือน/ค.ศ.');
+            instance.altInput.setAttribute('aria-label', 'เลือกวันที่ โดยใช้ปีคริสต์ศักราช');
+          }
+        }
+      });
+    });
+  }
+
+  function setDateField(selector, isoDate){
+    var el = document.querySelector(selector);
+    if(!el) return;
+    if(el._flatpickr){
+      if(isoDate) el._flatpickr.setDate(isoDate, true, 'Y-m-d');
+      else el._flatpickr.clear();
+    } else {
+      $(selector).val(isoDate || '');
+    }
+  }
+
+  function todayLocalIso(){
+    var d = new Date();
+    var mm = String(d.getMonth() + 1).padStart(2, '0');
+    var dd = String(d.getDate()).padStart(2, '0');
+    return d.getFullYear() + '-' + mm + '-' + dd;
+  }
+
+  // กำหนดปีงบประมาณเป็นปี ค.ศ. ที่สิ้นสุดในปีนั้น เช่น FY 2570 = 2027
+  function currentFiscalYearEndCE(dateObj){
+    var d = dateObj || new Date();
+    return d.getFullYear() + (d.getMonth() >= 9 ? 1 : 0);
+  }
+  function fiscalYearLabelBE(fiscalEndYearCE){
+    return 'พ.ศ. ' + (Number(fiscalEndYearCE) + 543);
+  }
 
   var GAS_URL = 'https://script.google.com/macros/s/AKfycbxuIqtwKA-FiXSRB11ed5u2O7qORGTMJFrlc1ynUi9sBkNjuI4hBKjKbjM_o3UUTz-D/exec';
 
@@ -457,6 +527,7 @@
   var ST = { SUBMITTED:['รออนุมัติ','#f59e0b'], L1_APPROVED:['อยู่ระหว่างอนุมัติ','#0ea5e9'], APPROVED:['อนุมัติ','#10b981'], REJECTED:['ไม่อนุมัติ','#ef4444'], CANCELLED:['ยกเลิก','#94a3b8'] };
 
   $(document).ready(function(){
+    initGregorianDatePickers();
     initLiff();
     $('#btnLink').on('click', doLink);
     $('#btnSubmitLeave').on('click', submitLeave);
@@ -482,7 +553,7 @@
     $('#otAttach').on('change', uploadOutingAttach);
     $('#otMulti').on('change', function(){
       $('#otEndBox').toggleClass('hidden', !this.checked);
-      if(!this.checked) $('#otEnd').val('');
+      if(!this.checked) setDateField('#otEnd', '');
     });
 
     $('#btnSubmitOfficial').on('click', submitOfficial);
@@ -526,8 +597,8 @@
 
   /* ── ขออนุญาตออกนอกบริเวณโรงเรียน ── */
   function prefillOutingForm(){
-    var today = new Date().toISOString().substring(0, 10);
-    if(!$('#otStart').val()) $('#otStart').val(today);
+    var today = todayLocalIso();
+    if(!$('#otStart').val()) setDateField('#otStart', today);
     if(!$('#otStartTime').val()) $('#otStartTime').val('13:00');
     if(!$('#otEndTime').val()) $('#otEndTime').val('15:00');
   }
@@ -554,7 +625,7 @@
       if(r.status !== 'success'){ toast('error', r.message); return; }
       Swal.fire({ icon:'success', title:'ยื่นคำขอแล้ว', text:'เลขที่ ' + r.request_no, timer:2200, showConfirmButton:false });
       $('#otReason,#otDest,#otContact').val('');
-      $('#otMulti').prop('checked', false); $('#otEndBox').addClass('hidden'); $('#otEnd').val('');
+      $('#otMulti').prop('checked', false); $('#otEndBox').addClass('hidden'); setDateField('#otEnd', '');
       $('#otAttach').val(''); $('#otAttachId').val(''); $('#otAttachStatus').text('');
       loadOutingHistory();
     }).catch(function(err){
@@ -660,9 +731,9 @@
 
   /* ── ไปราชการ ── */
   function prefillOfficialForm(){
-    var today = new Date().toISOString().substring(0, 10);
-    if(!$('#ofStartDate').val()) $('#ofStartDate').val(today);
-    if(!$('#ofEndDate').val()) $('#ofEndDate').val(today);
+    var today = todayLocalIso();
+    if(!$('#ofStartDate').val()) setDateField('#ofStartDate', today);
+    if(!$('#ofEndDate').val()) setDateField('#ofEndDate', today);
   }
 
   function submitOfficial(){
@@ -1052,7 +1123,7 @@
 
     LF.editId = id;
     $('#nlType').val(d.leave_type_id);
-    $('#nlStart').val(d.start_date); $('#nlEnd').val(d.end_date);
+    setDateField('#nlStart', d.start_date); setDateField('#nlEnd', d.end_date);
     $('#nlStartTime').val(d.start_time || ''); $('#nlEndTime').val(d.end_time || '');
     prefillLeaveTimes();
     $('#nlReason').val(d.reason || '');
@@ -1081,7 +1152,7 @@
   function resetLeaveForm(){
     $('#nlReason').val(''); $('#nlContact').val(''); $('#nlAttachId').val(''); $('#nlAttach').val('');
     $('#nlAttachStatus').html(''); $('#uploadBar').hide(); $('#nlDays').text('-'); $('#nlDaysHint').text('');
-    $('#nlStart').val(''); $('#nlEnd').val(''); $('#nlStartTime').val(''); $('#nlEndTime').val('');
+    setDateField('#nlStart', ''); setDateField('#nlEnd', ''); $('#nlStartTime').val(''); $('#nlEndTime').val('');
     prefillLeaveTimes();
   }
 
@@ -1391,25 +1462,31 @@
     }).catch(function(){ setBtnLoading('#btnSaveProfile', false); toast('error','บันทึกไม่สำเร็จ'); });
   }
 
-  /* ── Stats tab ── */
+  /* ── Stats tab: ปีงบประมาณไทย (1 ต.ค. - 30 ก.ย.) ── */
   (function initStatsYear(){
-    var nowY = new Date().getFullYear();
+    var currentFYEnd = currentFiscalYearEndCE(new Date());
     var opt = '';
-    for(var y = nowY; y >= nowY - 3; y--) opt += '<option value="' + y + '">' + (y + (LF.be ? 543 : 0)) + '\x3c/option>';
-    $('#statsYear').html(opt);
+    for(var fyEnd = currentFYEnd; fyEnd >= currentFYEnd - 5; fyEnd--){
+      opt += '<option value="' + fyEnd + '">' + fiscalYearLabelBE(fyEnd) + '\x3c/option>';
+    }
+    $('#statsYear').html(opt).val(String(currentFYEnd));
     $('#statsYear').on('change', loadStats);
   })();
 
   function loadStats(){
-    var year = $('#statsYear').val() || new Date().getFullYear();
+    var fiscalEndCE = Number($('#statsYear').val()) || currentFiscalYearEndCE(new Date());
+    var fiscalStartCE = fiscalEndCE - 1;
+    var fiscalLabel = fiscalYearLabelBE(fiscalEndCE);
+    var fiscalRange = '1 ต.ค. ' + (fiscalStartCE + 543) + ' – 30 ก.ย. ' + (fiscalEndCE + 543);
     $('#statsList').html('<div class="text-center py-4"><div class="spinner-border spinner-border-sm" style="color:var(--brand)">\x3c/div>\x3c/div>');
-    api('liffGetMyStats', LF.userId, year).then(function(r){
+    api('liffGetMyStats', LF.userId, fiscalEndCE).then(function(r){
       if(r.status !== 'success' || !r.data.length){
-        $('#statsList').html('<div class="text-center text-muted py-4">ยังไม่มีข้อมูลการลาในปีนี้\x3c/div>'); return;
+        $('#statsList').html('<div class="text-center text-muted py-4">ยังไม่มีข้อมูลการลาใน' + fiscalLabel + '\x3c/div>'); return;
       }
       var totalDays = r.data.reduce(function(a, d){ return a + d.days; }, 0);
       var html = '<div class="card-soft mb-3" style="background:linear-gradient(135deg,var(--brand),var(--brand-700));color:#fff">'
-        + '<div style="font-size:.82rem;opacity:.85">ลาทั้งหมดในปี ' + (Number(year) + (LF.be?543:0)) + '\x3c/div>'
+        + '<div style="font-size:.82rem;opacity:.9">สถิติการลา' + fiscalLabel + '\x3c/div>'
+        + '<div style="font-size:.72rem;opacity:.8;margin-top:2px">' + fiscalRange + '\x3c/div>'
         + '<div style="font-size:2rem;font-weight:700;line-height:1.2">' + totalDays + '\x3c/div>'
         + '<div style="font-size:.82rem;opacity:.85">วัน\x3c/div>\x3c/div>';
       r.data.forEach(function(d){
@@ -1446,7 +1523,7 @@
 
     var firstDow = new Date(HOL.year, HOL.month - 1, 1).getDay();
     var lastDate = new Date(HOL.year, HOL.month, 0).getDate();
-    var todayIso = new Date().toISOString().substring(0, 10);
+    var todayIso = todayLocalIso();
 
     var html = ['อา','จ','อ','พ','พฤ','ศ','ส'].map(function(d){ return '<div class="hol-dow">' + d + '\x3c/div>'; }).join('');
     for(var i = 0; i < firstDow; i++){ html += '<div class="hol-cell empty">\x3c/div>'; }
