@@ -789,7 +789,7 @@
     var root = document.createElement('div');
     root.id = 'pdfRequestView';
     root.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#f3f4f6;display:flex;flex-direction:column;font-family:Arial,sans-serif;color:#1f2937;overflow:hidden;padding-bottom:env(safe-area-inset-bottom)';
-    root.innerHTML = '<div style="padding:14px 16px;background:#0b8f62;color:#fff;font-weight:700">แบบฟอร์ม PDF</div><div id="pdfRequestStatus" style="padding:14px 16px;background:#fff">กำลังตรวจสอบสิทธิ์และจัดเตรียมเอกสาร...</div><div id="pdfRequestActions" style="display:none;padding:10px 14px;background:#fff;gap:8px"><a id="pdfRequestOpen" target="_blank" rel="noopener" style="background:#0b8f62;color:#fff;padding:10px 14px;border-radius:8px;text-decoration:none">เปิด PDF</a><a id="pdfRequestDownload" style="background:#334155;color:#fff;padding:10px 14px;border-radius:8px;text-decoration:none">ดาวน์โหลด PDF</a></div><iframe id="pdfRequestFrame" title="แบบฟอร์ม PDF" style="display:none;border:0;flex:1 1 auto;width:100%;min-height:0;background:#fff;overflow:auto"></iframe>';
+    root.innerHTML = '<div style="padding:14px 16px;background:#0b8f62;color:#fff;font-weight:700">แบบฟอร์ม PDF</div><div id="pdfRequestStatus" style="padding:14px 16px;background:#fff">กำลังตรวจสอบสิทธิ์และจัดเตรียมเอกสาร...</div><div id="pdfRequestActions" style="display:none;padding:10px 14px;background:#fff;gap:8px"><a id="pdfRequestOpen" target="_blank" rel="noopener" style="background:#0b8f62;color:#fff;padding:10px 14px;border-radius:8px;text-decoration:none">เปิด PDF</a><a id="pdfRequestDownload" style="background:#334155;color:#fff;padding:10px 14px;border-radius:8px;text-decoration:none">ดาวน์โหลด PDF</a></div><iframe id="pdfRequestFrame" title="แบบฟอร์ม PDF" style="display:none;border:0;flex:1 1 auto;width:100%;min-height:0;background:#fff;overflow:hidden"></iframe>';
     document.body.appendChild(root);
     function fail(message){
       var status = document.getElementById('pdfRequestStatus');
@@ -831,15 +831,21 @@
         var fitScript = [
           '<script>(function(){',
           'function fitA4(){',
-          'var b=document.body, d=document.documentElement, w=210*96/25.4;',
+          'var b=document.body,d=document.documentElement,w=210*96/25.4;',
           'if(!b)return;',
-          'b.style.width="210mm";b.style.minWidth="210mm";b.style.transformOrigin="top left";',
-          'var vw=(window.innerWidth||d.clientWidth||320)-16;',
-          'var scale=Math.min(1,vw/w);',
-          'b.style.transform="scale("+scale+")";',
-          'var h=Math.max(b.scrollHeight,d.scrollHeight);',
-          'd.style.height=(h*scale)+"px";d.style.overflowX="hidden";',
-          'b.style.margin="0";',
+          'var vw=window.innerWidth||d.clientWidth||320;',
+          'var vh=window.innerHeight||d.clientHeight||480;',
+          'b.style.width="210mm";b.style.minWidth="210mm";b.style.margin="0";',
+          'b.style.position="absolute";b.style.top="0";b.style.left="0";',
+          'b.style.transformOrigin="top left";b.style.transform="none";',
+          'd.style.height="auto";',
+          'var h=Math.max(b.scrollHeight,b.offsetHeight,d.scrollHeight,1);',
+          'var scale=Math.min(1,(vw-16)/w,(vh-16)/h);',
+          'var left=Math.max(0,(vw-w*scale)/2);',
+          'b.style.left=left+"px";b.style.transform="scale("+scale+")";',
+          'd.style.width="100%";d.style.height="100vh";',
+          'd.style.margin="0";d.style.padding="0";d.style.overflow="hidden";',
+          'b.style.overflow="visible";',
           '}',
           'window.addEventListener("load",fitA4);window.addEventListener("resize",fitA4);',
           'if(document.fonts&&document.fonts.ready){document.fonts.ready.then(fitA4);}',
