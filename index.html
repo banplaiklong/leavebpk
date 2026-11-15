@@ -887,6 +887,7 @@
         blobUrl = URL.createObjectURL(blob);
       }
       var frame = document.getElementById('pdfRequestFrame');
+      if (frame) frame.style.display = 'block'; // ต้องแสดง iframe ก่อนวัด viewport ภายใน srcdoc
       if (!result.html && !blobUrl) throw new Error('ระบบไม่ได้ส่งข้อมูลแบบฟอร์มกลับมา');
       // ใช้ HTML ต้นฉบับของแบบฟอร์มสำหรับตัวอย่างบนมือถือ
       // เพื่อย่อกระดาษ A4 ทั้งหน้าให้พอดีกับความกว้างจอ โดยไม่เปลี่ยนไฟล์ PDF จริง
@@ -917,14 +918,18 @@
         }
         var fitScript = [
           '<script>(function(){',
-          'function mobile(){return (window.innerWidth||document.documentElement.clientWidth||320)<=700;}',
-          'function fit(){var d=document.documentElement,b=document.body;if(!b)return;var sheet=b.querySelector(".sheet");if(!sheet)return;if(!mobile()){b.style.width="100%";b.style.height="auto";b.style.position="static";b.style.transform="none";d.style.width="100%";d.style.height="auto";d.style.overflow="auto";sheet.style.transform="none";sheet.style.transformOrigin="";return;}',
-          'var vw=window.innerWidth||d.clientWidth||320;var vh=window.innerHeight||d.clientHeight||600;',
-          'b.style.position="relative";b.style.width="210mm";b.style.minWidth="210mm";b.style.height="auto";b.style.transform="none";b.style.margin="0";sheet.style.width="210mm";sheet.style.minWidth="210mm";sheet.style.maxWidth="none";sheet.style.height="auto";sheet.style.transform="none";sheet.style.transformOrigin="top left";sheet.style.margin="0";',
-          'var sw=sheet.offsetWidth||794;var sh=Math.max(sheet.scrollHeight,sheet.offsetHeight,1);var toolbar=b.querySelector(".toolbar");var th=toolbar?toolbar.offsetHeight:0;var scale=Math.min(1,(vw-8)/sw,(vh-th-8)/sh);if(!isFinite(scale)||scale<=0)scale=1;',
-          'sheet.style.transform="scale("+scale+")";sheet.style.transformOrigin="top left";sheet.style.marginLeft=Math.max(0,(vw-sw*scale)/2)+"px";sheet.style.marginRight="0";var scaledH=sh*scale+th+8;b.style.width=vw+"px";b.style.minWidth="0";b.style.height=scaledH+"px";b.style.position="relative";d.style.width="100%";d.style.height=scaledH+"px";d.style.overflow="hidden";b.style.overflow="visible";}',
-          'function run(){requestAnimationFrame(function(){fit();setTimeout(fit,250);setTimeout(fit,800);});}',
-          'window.addEventListener("load",run);window.addEventListener("resize",run);window.addEventListener("orientationchange",function(){setTimeout(run,300);});window.addEventListener("beforeprint",function(){var s=document.querySelector(".sheet");if(s){s.style.transform="none";s.style.margin="0 auto";}document.documentElement.style.height="auto";document.body.style.height="auto";});window.addEventListener("afterprint",run);if(document.fonts&&document.fonts.ready){document.fonts.ready.then(run);}run();',
+          'function mobile(){return Math.min(window.innerWidth||9999,document.documentElement.clientWidth||9999)<=700;}',
+          'function fit(){var d=document.documentElement,b=document.body;if(!b)return;var sheet=b.querySelector(".sheet");if(!sheet)return;if(!mobile()){b.style.width="100%";b.style.height="auto";b.style.position="static";b.style.transform="none";d.style.width="100%";d.style.height="auto";d.style.overflow="auto";sheet.style.transform="none";sheet.style.transformOrigin="";sheet.style.margin="12px auto 20px";return;}',
+          'var vv=window.visualViewport;var vw=Math.floor((vv&&vv.width)||d.clientWidth||window.innerWidth||320);var vh=Math.floor((vv&&vv.height)||window.innerHeight||d.clientHeight||600);',
+          'b.style.cssText += ";position:relative!important;width:210mm!important;min-width:210mm!important;height:auto!important;margin:0!important;padding:0!important;overflow:visible!important;";d.style.cssText += ";margin:0!important;padding:0!important;width:100%!important;overflow:hidden!important;";',
+          'sheet.style.setProperty("width","210mm","important");sheet.style.setProperty("min-width","210mm","important");sheet.style.setProperty("max-width","none","important");sheet.style.setProperty("height","auto","important");sheet.style.setProperty("transform","none","important");sheet.style.setProperty("margin","0","important");sheet.style.setProperty("box-sizing","border-box","important");',
+          'var toolbar=b.querySelector(".toolbar");var th=toolbar?toolbar.getBoundingClientRect().height:0;var sw=sheet.offsetWidth||794;var sh=Math.max(sheet.scrollHeight,sheet.offsetHeight,sheet.getBoundingClientRect().height,1);',
+          'var availW=Math.max(1,vw-12);var availH=Math.max(1,vh-th-12);var scale=Math.min(availW/sw,availH/sh);if(!isFinite(scale)||scale<=0)scale=1;scale=Math.min(1,scale);',
+          'sheet.style.setProperty("transform-origin","top left","important");sheet.style.setProperty("transform","scale("+scale+")","important");sheet.style.setProperty("margin-left",Math.max(0,(vw-sw*scale)/2)+"px","important");sheet.style.setProperty("margin-right","0","important");',
+          'var totalH=Math.ceil(th+sh*scale+12);b.style.setProperty("height",totalH+"px","important");d.style.setProperty("height",totalH+"px","important");b.style.setProperty("width",vw+"px","important");b.style.setProperty("min-width","0","important");}',
+          'var timer;function run(){clearTimeout(timer);requestAnimationFrame(function(){fit();timer=setTimeout(fit,350);});}',
+          'window.addEventListener("load",function(){run();setTimeout(run,900);});window.addEventListener("resize",run);window.addEventListener("orientationchange",function(){setTimeout(run,500);});if(window.visualViewport){window.visualViewport.addEventListener("resize",run);}if(document.fonts&&document.fonts.ready){document.fonts.ready.then(function(){run();setTimeout(run,500);});}run();',
+          'window.addEventListener("beforeprint",function(){var s=document.querySelector(".sheet");if(s){s.style.setProperty("transform","none","important");s.style.setProperty("margin","0 auto","important");}document.documentElement.style.height="auto";document.body.style.height="auto";});window.addEventListener("afterprint",run);',
           '})();<\/script>'
         ].join('');
         if (/<\/body>/i.test(previewHtml)) {
