@@ -228,7 +228,7 @@
         <textarea class="form-control mb-2" id="nlReason" rows="2"></textarea>
         <label class="form-label">ผู้ติดต่อระหว่างลา</label>
         <input class="form-control mb-2" id="nlContact">
-        <label class="form-label">เอกสารแนบ <span class="text-danger" id="nlAttachReq"></span>(ตารางสอนแทน/อื่นๆ)</label>
+        <label class="form-label">เอกสารแนบ <span class="text-danger" id="nlAttachReq"></span></label>
         <div class="upload-wrap">
           <input type="file" class="form-control mb-1" id="nlAttach" accept="image/*,application/pdf">
           <div class="upload-bar" id="uploadBar"><div class="upload-bar-fill"></div></div>
@@ -263,7 +263,7 @@
         <input class="form-control mb-2" id="otDest" placeholder="เช่น สพม.ประจวบคีรีขันธ์">
         <label class="form-label">ติดต่อได้ที่</label>
         <input class="form-control mb-2" id="otContact" placeholder="เบอร์โทรระหว่างออกนอกโรงเรียน">
-        <label class="form-label">เอกสารแนบ <span class="text-muted" style="font-weight:400">(ตารางสอนแทน/อื่นๆ)</span></label>
+        <label class="form-label">เอกสารแนบ <span class="text-muted" style="font-weight:400">(ไม่บังคับ)</span></label>
         <div class="upload-wrap">
           <input type="file" class="form-control mb-1" id="otAttach" accept="image/*,application/pdf">
           <div class="upload-status" id="otAttachStatus"></div>
@@ -306,13 +306,13 @@
         <input class="form-control mb-2" id="ofFunding" placeholder="เช่น เบิกจากต้นสังกัด">
         <label class="form-label">ติดต่อได้ที่ <span class="text-muted" style="font-weight:400">(ไม่บังคับ)</span></label>
         <input class="form-control mb-2" id="ofContact">
-        <label class="form-label">เอกสารแนบประกอบคำขอ <span class="text-muted" style="font-weight:400">(ตารางสอนแทน/อื่น)</span></label>
+        <label class="form-label">เอกสารแนบประกอบคำขอ <span class="text-muted" style="font-weight:400">(ไม่บังคับ — เช่น หนังสือเชิญ / โครงการ)</span></label>
         <div class="upload-wrap">
           <input type="file" class="form-control mb-1" id="ofAttach" accept="image/*,application/pdf">
           <div class="upload-status" id="ofAttachStatus"></div>
         </div>
         <input type="hidden" id="ofAttachId">
-        <label class="form-label mt-2">หนังสือไปราชการ <span class="text-muted" style="font-weight:400">(หนังสือเชิญหรือคำสั่งไปราชการ)</span></label>
+        <label class="form-label mt-2">หนังสือไปราชการ <span class="text-muted" style="font-weight:400">(ไม่บังคับ — แนบหนังสือหรือคำสั่งไปราชการ)</span></label>
         <div class="upload-wrap">
           <input type="file" class="form-control mb-1" id="ofOfficialOrderAttach" accept="image/*,application/pdf">
           <div class="upload-status" id="ofOfficialOrderAttachStatus"></div>
@@ -747,6 +747,78 @@
     if(t === 'official') loadOfficialHistory();
   }
 
+  // อ่านปลายทาง PDF หลัง liff.init() คืนค่า path/query จาก liff.state แล้ว
+  function getPdfRoute(){
+    try {
+      var current = new URL(window.location.href);
+      var params = current.searchParams;
+      var id = params.get('id') || '';
+      var token = params.get('k') || '';
+      var isDoc = /\/doc\/?$/i.test(current.pathname) || params.get('page') === 'doc';
+      var state = params.get('liff.state') || '';
+      if(state){
+        try {
+          var stateUrl = new URL(state, window.location.origin);
+          if(/\/doc\/?$/i.test(stateUrl.pathname) || stateUrl.searchParams.get('page') === 'doc'){
+            isDoc = true;
+            id = id || stateUrl.searchParams.get('id') || '';
+            token = token || stateUrl.searchParams.get('k') || '';
+          }
+        } catch(ignore) {
+          var decoded = decodeURIComponent(state);
+          if(decoded.indexOf('/doc') !== -1){
+            isDoc = true;
+            var q = decoded.split('?')[1] || '';
+            var qp = new URLSearchParams(q);
+            id = id || qp.get('id') || '';
+            token = token || qp.get('k') || '';
+          }
+        }
+      }
+      if(isDoc && id && token) return {id:id, token:token};
+    } catch(e) {}
+    return null;
+  }
+
+  // แสดงไฟล์ PDF ในหน้าเดิมของ LIFF ไม่เริ่ม liff.init() ซ้ำอีกครั้ง
+  function openRequestPdf(route){
+    splashHide();
+    $('#viewLink, #viewApp, #tabbar').addClass('hidden');
+    var old = document.getElementById('pdfRequestView');
+    if(old) old.remove();
+    var root = document.createElement('div');
+    root.id = 'pdfRequestView';
+    root.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#f3f4f6;display:flex;flex-direction:column;font-family:Arial,sans-serif;color:#1f2937';
+    root.innerHTML = '<div style="padding:14px 16px;background:#0b8f62;color:#fff;font-weight:700">แบบฟอร์ม PDF</div><div id="pdfRequestStatus" style="padding:14px 16px;background:#fff">กำลังตรวจสอบสิทธิ์และจัดเตรียมเอกสาร...</div><div id="pdfRequestActions" style="display:none;padding:10px 14px;background:#fff;gap:8px"><a id="pdfRequestOpen" target="_blank" rel="noopener" style="background:#0b8f62;color:#fff;padding:10px 14px;border-radius:8px;text-decoration:none">เปิด PDF</a><a id="pdfRequestDownload" style="background:#334155;color:#fff;padding:10px 14px;border-radius:8px;text-decoration:none">ดาวน์โหลด PDF</a></div><iframe id="pdfRequestFrame" title="แบบฟอร์ม PDF" style="display:none;border:0;flex:1;width:100%;background:#fff"></iframe>';
+    document.body.appendChild(root);
+    function fail(message){
+      var status = document.getElementById('pdfRequestStatus');
+      if(status) status.textContent = message || 'ไม่สามารถเปิดเอกสารได้';
+    }
+    var accessToken = '';
+    try { accessToken = liff.getAccessToken() || ''; } catch(e) {}
+    if(!accessToken){ fail('ไม่พบสิทธิ์ยืนยันบัญชี LINE กรุณาปิดหน้านี้แล้วเปิดจากข้อความ LINE อีกครั้ง'); return; }
+    api('getAuthorizedRequestPdf', accessToken, route.id, route.token).then(function(result){
+      if(!result || result.status !== 'success') throw new Error((result && result.message) || 'ไม่สามารถเปิดเอกสารได้');
+      var binary = atob(result.base64 || '');
+      var bytes = new Uint8Array(binary.length);
+      for(var i=0;i<binary.length;i++) bytes[i] = binary.charCodeAt(i);
+      var blob = new Blob([bytes], {type:'application/pdf'});
+      var blobUrl = URL.createObjectURL(blob);
+      var open = document.getElementById('pdfRequestOpen');
+      var download = document.getElementById('pdfRequestDownload');
+      var frame = document.getElementById('pdfRequestFrame');
+      var actions = document.getElementById('pdfRequestActions');
+      open.href = blobUrl;
+      download.href = blobUrl;
+      download.download = result.filename || 'leave-form.pdf';
+      frame.src = blobUrl;
+      frame.style.display = 'block';
+      actions.style.display = 'flex';
+      document.getElementById('pdfRequestStatus').textContent = 'เปิดเอกสารสำเร็จ หากไม่แสดงตัวอย่าง ให้กดปุ่มเปิด PDF หรือดาวน์โหลด PDF';
+    }).catch(function(error){ fail(error && error.message ? error.message : String(error)); });
+  }
+
   function initLiff(){
     api('liffGetConfig').then(function(c){
       LF.be = c.buddhist_era;
@@ -767,13 +839,21 @@
         return;
       }
       liff.init({ liffId: c.liff_id }).then(function(){
-        if(!liff.isLoggedIn()){ liff.login(); return; }
+        if(!liff.isLoggedIn()){
+          // ใน LIFF browser LINE จะจัดการ login ให้อัตโนมัติ ห้ามเรียก liff.login() ซ้ำ
+          if(liff.isInClient()) throw new Error('ไม่พบสถานะเข้าสู่ระบบ LINE กรุณาปิดหน้าแล้วเปิดลิงก์จาก LINE อีกครั้ง');
+          // กรณีเปิดจาก external browser ให้กลับมาที่ URL เดิมหลัง login
+          liff.login({ redirectUri: window.location.href });
+          return null;
+        }
         return liff.getProfile();
       }).then(function(profile){
         if(!profile) return;
         LF.userId = profile.userId;
         $('#lfSub').text(profile.displayName || '');
         $('#splashSub').text(profile.displayName || '');
+        var pdfRoute = getPdfRoute();
+        if(pdfRoute){ openRequestPdf(pdfRoute); return; }
         checkLink();
       }).catch(function(err){
         splashHide();
