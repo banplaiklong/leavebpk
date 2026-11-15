@@ -788,8 +788,8 @@
     if(old) old.remove();
     var root = document.createElement('div');
     root.id = 'pdfRequestView';
-    root.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#f3f4f6;display:flex;flex-direction:column;font-family:Arial,sans-serif;color:#1f2937';
-    root.innerHTML = '<div style="padding:14px 16px;background:#0b8f62;color:#fff;font-weight:700">แบบฟอร์ม PDF</div><div id="pdfRequestStatus" style="padding:14px 16px;background:#fff">กำลังตรวจสอบสิทธิ์และจัดเตรียมเอกสาร...</div><div id="pdfRequestActions" style="display:none;padding:10px 14px;background:#fff;gap:8px"><a id="pdfRequestOpen" target="_blank" rel="noopener" style="background:#0b8f62;color:#fff;padding:10px 14px;border-radius:8px;text-decoration:none">เปิด PDF</a><a id="pdfRequestDownload" style="background:#334155;color:#fff;padding:10px 14px;border-radius:8px;text-decoration:none">ดาวน์โหลด PDF</a></div><iframe id="pdfRequestFrame" title="แบบฟอร์ม PDF" style="display:none;border:0;flex:1;width:100%;background:#fff"></iframe>';
+    root.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#f3f4f6;display:flex;flex-direction:column;font-family:Arial,sans-serif;color:#1f2937;overflow:hidden;padding-bottom:env(safe-area-inset-bottom)';
+    root.innerHTML = '<div style="padding:14px 16px;background:#0b8f62;color:#fff;font-weight:700">แบบฟอร์ม PDF</div><div id="pdfRequestStatus" style="padding:14px 16px;background:#fff">กำลังตรวจสอบสิทธิ์และจัดเตรียมเอกสาร...</div><div id="pdfRequestActions" style="display:none;padding:10px 14px;background:#fff;gap:8px"><a id="pdfRequestOpen" target="_blank" rel="noopener" style="background:#0b8f62;color:#fff;padding:10px 14px;border-radius:8px;text-decoration:none">เปิด PDF</a><a id="pdfRequestDownload" style="background:#334155;color:#fff;padding:10px 14px;border-radius:8px;text-decoration:none">ดาวน์โหลด PDF</a></div><iframe id="pdfRequestFrame" title="แบบฟอร์ม PDF" style="display:none;border:0;flex:1 1 auto;width:100%;min-height:0;background:#fff;overflow:auto"></iframe>';
     document.body.appendChild(root);
     function fail(message){
       var status = document.getElementById('pdfRequestStatus');
@@ -812,10 +812,57 @@
       open.href = blobUrl;
       download.href = blobUrl;
       download.download = result.filename || 'leave-form.pdf';
-      frame.src = blobUrl;
+      // ใช้ HTML ต้นฉบับของแบบฟอร์มสำหรับตัวอย่างบนมือถือ
+      // เพื่อย่อกระดาษ A4 ทั้งหน้าให้พอดีกับความกว้างจอ โดยไม่เปลี่ยนไฟล์ PDF จริง
+      if (result.html) {
+        var previewHtml = String(result.html);
+        var responsiveStyle = [
+          '<style id="liff-mobile-pdf-style">',
+          'html,body{margin:0!important;padding:0!important;max-width:100%!important;overflow-x:hidden!important;background:#eef1f5!important;}',
+          'body{width:210mm!important;min-width:210mm!important;box-sizing:border-box!important;transform-origin:top left!important;}',
+          '@media screen{body{padding:0!important;margin:0!important;}*{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}',
+          '</style>'
+        ].join('');
+        if (/<\\/head>/i.test(previewHtml)) {
+          previewHtml = previewHtml.replace(/<\\/head>/i, responsiveStyle + '</head>');
+        } else {
+          previewHtml = responsiveStyle + previewHtml;
+        }
+        var fitScript = [
+          '<script>(function(){',
+          'function fitA4(){',
+          'var b=document.body, d=document.documentElement, w=210*96/25.4;',
+          'if(!b)return;',
+          'b.style.width="210mm";b.style.minWidth="210mm";b.style.transformOrigin="top left";',
+          'var vw=(window.innerWidth||d.clientWidth||320)-16;',
+          'var scale=Math.min(1,vw/w);',
+          'b.style.transform="scale("+scale+")";',
+          'var h=Math.max(b.scrollHeight,d.scrollHeight);',
+          'd.style.height=(h*scale)+"px";d.style.overflowX="hidden";',
+          'b.style.margin="0";',
+          '}',
+          'window.addEventListener("load",fitA4);window.addEventListener("resize",fitA4);',
+          'if(document.fonts&&document.fonts.ready){document.fonts.ready.then(fitA4);}',
+          'setTimeout(fitA4,250);setTimeout(fitA4,900);',
+          '})();</script>'
+        ].join('');
+        if (/<\\/body>/i.test(previewHtml)) {
+          previewHtml = previewHtml.replace(/<\\/body>/i, fitScript + '</body>');
+        } else {
+          previewHtml += fitScript;
+        }
+        frame.removeAttribute('src');
+        frame.srcdoc = previewHtml;
+      } else {
+        // รองรับ API รุ่นเก่าที่ยังส่งกลับเฉพาะไฟล์ PDF
+        frame.src = blobUrl;
+      }
       frame.style.display = 'block';
       actions.style.display = 'flex';
-      document.getElementById('pdfRequestStatus').textContent = 'เปิดเอกสารสำเร็จ หากไม่แสดงตัวอย่าง ให้กดปุ่มเปิด PDF หรือดาวน์โหลด PDF';
+      document.getElementById('pdfRequestStatus').textContent =
+        result.html
+          ? 'แสดงตัวอย่างแบบฟอร์ม A4 ให้พอดีกับหน้าจอแล้ว สามารถเปิดหรือดาวน์โหลด PDF ฉบับจริงได้'
+          : 'เปิดเอกสารสำเร็จ หากไม่แสดงตัวอย่าง ให้กดปุ่มเปิด PDF หรือดาวน์โหลด PDF';
     }).catch(function(error){ fail(error && error.message ? error.message : String(error)); });
   }
 
