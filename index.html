@@ -1263,7 +1263,7 @@
   function loadBalances(){
     $('#balList').html(skelRows(4));
     api('liffGetBalances', LF.userId).then(function(r){
-      $('#balYear').text('ปี ' + (r.year + (LF.be ? 543 : 0)));
+      $('#balYear').text('ปีงบประมาณ พ.ศ. ' + (r.year + 543));
       if(!r.data || !r.data.length){ $('#balList').html('<div class="text-center text-muted py-3">ยังไม่มีข้อมูลโควตา\x3c/div>'); return; }
       var html = '';
       r.data.forEach(function(b){
