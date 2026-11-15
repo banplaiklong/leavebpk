@@ -789,11 +789,11 @@
     var root = document.createElement('div');
     root.id = 'pdfRequestView';
     root.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#f3f4f6;display:flex;flex-direction:column;font-family:Arial,sans-serif;color:#1f2937;overflow:hidden;padding-bottom:env(safe-area-inset-bottom)';
-    root.innerHTML = '<div style="padding:14px 16px;background:#0b8f62;color:#fff;font-weight:700">แบบฟอร์ม PDF</div><div id="pdfRequestStatus" style="padding:14px 16px;background:#fff">กำลังตรวจสอบสิทธิ์และจัดเตรียมเอกสาร...</div><div id="pdfRequestActions" style="display:none;padding:10px 14px;background:#fff;gap:8px"><a id="pdfRequestOpen" target="_blank" rel="noopener" style="background:#0b8f62;color:#fff;padding:10px 14px;border-radius:8px;text-decoration:none">เปิด PDF</a><a id="pdfRequestDownload" style="background:#334155;color:#fff;padding:10px 14px;border-radius:8px;text-decoration:none">ดาวน์โหลด PDF</a></div><iframe id="pdfRequestFrame" title="แบบฟอร์ม PDF" style="display:none;border:0;flex:1 1 auto;width:100%;min-height:0;background:#fff;overflow:hidden"></iframe>';
+    root.innerHTML = '<div id="pdfRequestStatus" style="display:none;padding:12px 16px;background:#fff;color:#b91c1c"></div><iframe id="pdfRequestFrame" title="แบบฟอร์มใบลา" style="display:none;border:0;flex:1 1 auto;width:100%;height:100%;min-height:0;background:#fff;overflow:hidden"></iframe>';
     document.body.appendChild(root);
     function fail(message){
       var status = document.getElementById('pdfRequestStatus');
-      if(status) status.textContent = message || 'ไม่สามารถเปิดเอกสารได้';
+      if(status){ status.textContent = message || 'ไม่สามารถเปิดเอกสารได้'; status.style.display = 'block'; }
     }
     var accessToken = '';
     try { accessToken = liff.getAccessToken() || ''; } catch(e) {}
@@ -805,13 +805,7 @@
       for(var i=0;i<binary.length;i++) bytes[i] = binary.charCodeAt(i);
       var blob = new Blob([bytes], {type:'application/pdf'});
       var blobUrl = URL.createObjectURL(blob);
-      var open = document.getElementById('pdfRequestOpen');
-      var download = document.getElementById('pdfRequestDownload');
       var frame = document.getElementById('pdfRequestFrame');
-      var actions = document.getElementById('pdfRequestActions');
-      open.href = blobUrl;
-      download.href = blobUrl;
-      download.download = result.filename || 'leave-form.pdf';
       // ใช้ HTML ต้นฉบับของแบบฟอร์มสำหรับตัวอย่างบนมือถือ
       // เพื่อย่อกระดาษ A4 ทั้งหน้าให้พอดีกับความกว้างจอ โดยไม่เปลี่ยนไฟล์ PDF จริง
       if (result.html) {
@@ -820,6 +814,10 @@
           '<style id="liff-mobile-pdf-style">',
           'html,body{margin:0!important;padding:0!important;max-width:100%!important;overflow-x:hidden!important;background:#eef1f5!important;}',
           'body{width:210mm!important;min-width:210mm!important;box-sizing:border-box!important;transform-origin:top left!important;}',
+          'table.stat{width:100%!important;table-layout:fixed!important;border-collapse:collapse!important;font-size:8pt!important;}',
+          'table.stat th,table.stat td{font-size:8pt!important;line-height:1.05!important;padding:1px!important;white-space:normal!important;overflow-wrap:anywhere!important;word-break:normal!important;height:auto!important;vertical-align:middle!important;}',
+          'table.stat th:first-child,table.stat td.name{width:24%!important;}',
+          'table.stat th:not(:first-child),table.stat td:not(.name){width:25.33%!important;}',
           '@media screen{body{padding:0!important;margin:0!important;}*{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}',
           '</style>'
         ].join('');
@@ -864,11 +862,8 @@
         frame.src = blobUrl;
       }
       frame.style.display = 'block';
-      actions.style.display = 'flex';
-      document.getElementById('pdfRequestStatus').textContent =
-        result.html
-          ? 'แสดงตัวอย่างแบบฟอร์ม A4 ให้พอดีกับหน้าจอแล้ว สามารถเปิดหรือดาวน์โหลด PDF ฉบับจริงได้'
-          : 'เปิดเอกสารสำเร็จ หากไม่แสดงตัวอย่าง ให้กดปุ่มเปิด PDF หรือดาวน์โหลด PDF';
+      var status = document.getElementById('pdfRequestStatus');
+      if(status) status.style.display = 'none';
     }).catch(function(error){ fail(error && error.message ? error.message : String(error)); });
   }
 
