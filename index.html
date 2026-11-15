@@ -860,11 +860,17 @@
     var root = document.createElement('div');
     root.id = 'pdfRequestView';
     root.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#f3f4f6;display:flex;flex-direction:column;font-family:Arial,sans-serif;color:#1f2937;overflow:hidden;padding-bottom:env(safe-area-inset-bottom)';
-    root.innerHTML = '<div id="pdfRequestStatus" style="display:none;padding:12px 16px;background:#fff;color:#b91c1c"></div><iframe id="pdfRequestFrame" title="แบบฟอร์มใบลา" style="display:none;border:0;flex:1 1 auto;width:100%;height:100%;min-height:0;background:#fff;overflow:hidden"></iframe>';
+    root.innerHTML = '<style>#pdfRequestStatus{display:flex;align-items:center;gap:11px;padding:16px;background:#fff;color:#334155;font-size:15px;line-height:1.5;box-shadow:0 1px 4px rgba(15,23,42,.08)}#pdfRequestStatus .pdf-wait{width:20px;height:20px;flex:0 0 20px;border:3px solid #dbeafe;border-top-color:#0b8f62;border-radius:50%;animation:pdfWaitSpin .8s linear infinite}#pdfRequestStatus.error{color:#b91c1c;background:#fff7f7}#pdfRequestStatus.error .pdf-wait{display:none}@keyframes pdfWaitSpin{to{transform:rotate(360deg)}}</style><div id="pdfRequestStatus" role="status" aria-live="polite"><span class="pdf-wait"></span><span id="pdfRequestStatusText">กำลังตรวจสอบสิทธิ์และจัดเตรียมแบบฟอร์ม PDF กรุณารอสักครู่...</span></div><iframe id="pdfRequestFrame" title="แบบฟอร์มใบลา" style="display:none;border:0;flex:1 1 auto;width:100%;height:100%;min-height:0;background:#fff;overflow:hidden"></iframe>';
     document.body.appendChild(root);
     function fail(message){
       var status = document.getElementById('pdfRequestStatus');
-      if(status){ status.textContent = message || 'ไม่สามารถเปิดเอกสารได้'; status.style.display = 'block'; }
+      var text = document.getElementById('pdfRequestStatusText');
+      if(status){
+        status.classList.add('error');
+        status.style.display = 'flex';
+        if(text) text.textContent = message || 'ไม่สามารถเปิดเอกสารได้';
+        else status.textContent = message || 'ไม่สามารถเปิดเอกสารได้';
+      }
     }
     var accessToken = '';
     try { accessToken = liff.getAccessToken() || ''; } catch(e) {}
@@ -934,7 +940,14 @@
       }
       frame.style.display = 'block';
       var status = document.getElementById('pdfRequestStatus');
-      if(status) status.style.display = 'none';
+      var statusText = document.getElementById('pdfRequestStatusText');
+      if(statusText) statusText.textContent = 'จัดเตรียมแบบฟอร์มสำเร็จ กำลังแสดงเอกสาร...';
+      if(status) status.classList.remove('error');
+      // ให้ผู้ใช้เห็นข้อความสำเร็จสั้น ๆ ก่อนซ่อนแถบสถานะเพื่อเพิ่มพื้นที่แสดง PDF
+      setTimeout(function(){
+        var current = document.getElementById('pdfRequestStatus');
+        if(current) current.style.display = 'none';
+      }, 900);
     }).catch(function(error){ fail(error && error.message ? error.message : String(error)); });
   }
 
