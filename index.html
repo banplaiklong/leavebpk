@@ -183,6 +183,18 @@
     </button>
   </div>
 
+  <!-- หน้าประกาศปิดปรับปรุงระบบ -->
+  <div class="lf-body hidden" id="viewMaintenance">
+    <div class="card-soft text-center">
+      <div class="mb-3" style="font-size:3rem;color:#d97706"><i class="fi fi-rr-tools"></i></div>
+      <h4 class="fw-bold mb-2">กำลังปรับปรุงระบบ</h4>
+      <p class="text-muted small mb-3">ขณะนี้ระบบลาออนไลน์อยู่ระหว่างการปรับปรุงชั่วคราว</p>
+      <div id="liffMaintenanceMessage" class="rounded-3 p-3 mb-3" style="background:#fff7ed;color:#9a3412">ระบบกำลังปรับปรุง กรุณากลับมาใช้บริการภายหลัง</div>
+      <p class="text-muted small mb-3">ขออภัยในความไม่สะดวก</p>
+      <button type="button" class="btn btn-accent w-100" id="btnMaintenanceRefresh">ตรวจสอบอีกครั้ง</button>
+    </div>
+  </div>
+
   <!-- ผูกบัญชี -->
   <div class="lf-body hidden" id="viewLink">
     <div class="card-soft text-center">
@@ -297,7 +309,7 @@
         <label class="form-label">เรื่อง / หลักสูตร</label>
         <input class="form-control mb-2" id="ofEventName" placeholder="เช่น อบรมเชิงปฏิบัติการการจัดการเรียนรู้เชิงรุก">
         <label class="form-label">จัดโดย <span class="text-muted" style="font-weight:400">(ไม่บังคับ)</span></label>
-        <input class="form-control mb-2" id="ofOrganizer" placeholder="เช่น สพป.สุราษฎร์ธานี เขต 3">
+        <input class="form-control mb-2" id="ofOrganizer" placeholder="เช่น สพป.สุราษฎร์ธานี เขต 3>
         <label class="form-label">สถานที่</label>
         <input class="form-control mb-2" id="ofDest" placeholder="เช่น โรงแรม.......">
         <div class="row g-2">
@@ -530,6 +542,7 @@
     initGregorianDatePickers();
     initLiff();
     $('#btnLink').on('click', doLink);
+    $('#btnMaintenanceRefresh').on('click', function(){ window.location.reload(); });
     $('#btnSubmitLeave').on('click', submitLeave);
     $('#nlType').on('change', onTypeChange);
     $('#nlStart, #nlEnd, #nlStartTime, #nlEndTime').on('change', recalc);
@@ -968,6 +981,14 @@
       if(c.logo_url){
         $('#lfLogo').attr('src', c.logo_url).removeClass('hidden'); $('#lfLogoIcon').addClass('hidden');
         $('#splashLogo').attr('src', c.logo_url).removeClass('hidden'); $('#splashIcon').addClass('hidden');
+      }
+      if(c.maintenance_mode === true){
+        $('#lfSub').text('กำลังปรับปรุงระบบ');
+        $('#splashSub').text('กรุณากลับมาใช้บริการภายหลัง');
+        $('#liffMaintenanceMessage').text(c.maintenance_message || 'ระบบกำลังปรับปรุง กรุณากลับมาใช้บริการภายหลัง');
+        $('#viewMaintenance').removeClass('hidden');
+        splashHide();
+        return;
       }
       if(!c.liff_id){
         splashHide();
