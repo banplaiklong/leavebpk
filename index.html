@@ -406,7 +406,7 @@
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13"></script>
   <script>
-  var LF = { userId: null, types: [], balances: {}, be: true, histStatus: '', editId: null };
+  var LF = { userId: null, types: [], balances: {}, be: true, histStatus: '', editId: null, requestEditor: null };
   var HOL = { year: new Date().getFullYear(), month: new Date().getMonth() + 1, data: [] };
   var LF_HIST = [];
 
@@ -672,6 +672,8 @@
                        + '<i class="fi fi-rr-clip me-1">\x3c/i>เอกสารแนบ\x3c/a>';
                 }).join(' · ') + '\x3c/div>'
               : '')
+          + ((d.status === 'SUBMITTED' || d.status === 'L1_APPROVED')
+              ? '<div class="d-flex gap-2 mt-2"><button class="btn btn-sm flex-fill" style="border:1px solid var(--brand);color:var(--brand);border-radius:10px;font-size:.78rem" onclick="openLiffRequestEditor(\'' + d.id + '\')">แก้ไขคำขอ</button></div>' : '')
           + '\x3c/div>';
       });
       $('#otList').html(h);
@@ -813,6 +815,8 @@
               ? '<div class="small mt-1"><a href="https://drive.google.com/file/d/' + d.official_order_file_id + '/view" target="_blank" rel="noopener">'
                 + '<i class="fi fi-rr-document me-1">\x3c/i>หนังสือไปราชการ</a></div>'
               : '')
+          + ((d.status === 'SUBMITTED' || d.status === 'L1_APPROVED')
+              ? '<div class="d-flex gap-2 mt-2"><button class="btn btn-sm flex-fill" style="border:1px solid var(--brand);color:var(--brand);border-radius:10px;font-size:.78rem" onclick="openLiffRequestEditor(\'' + d.id + '\')">แก้ไขคำขอ</button></div>' : '')
           + '\x3c/div>';
       });
       $('#ofList').html(h);
@@ -1266,10 +1270,8 @@
         + (d.last_comment ? '<div class="small text-muted mt-1">หมายเหตุ: ' + esc(d.last_comment) + '\x3c/div>' : '')
         + (d.status === 'SUBMITTED' || d.status === 'L1_APPROVED'
           ? '<div class="d-flex gap-2 mt-2">'
-            // แก้ไขได้เฉพาะตอนยังไม่มีใครอนุมัติ พออนุมัติระดับ 1 แล้วเหลือแค่ยกเลิก
-            + (d.status === 'SUBMITTED'
-              ? '<button class="btn btn-sm flex-fill" style="border:1px solid var(--brand);color:var(--brand);border-radius:10px;font-size:.78rem" onclick="event.stopPropagation();startEditLeave(\'' + d.id + '\')">แก้ไข\x3c/button>'
-              : '')
+            // ผู้ยื่นแก้ไขได้ทั้ง SUBMITTED และ L1_APPROVED; หากผ่านบางระดับแล้วระบบจะเริ่มอนุมัติใหม่
+            + '<button class="btn btn-sm flex-fill" style="border:1px solid var(--brand);color:var(--brand);border-radius:10px;font-size:.78rem" onclick="event.stopPropagation();openLiffRequestEditor(\'' + d.id + '\')">แก้ไข\x3c/button>'
             + '<button class="btn btn-sm flex-fill" style="border:1px solid #ef4444;color:#ef4444;border-radius:10px;font-size:.78rem" onclick="event.stopPropagation();cancelLeave(\'' + d.id + '\')">ยกเลิกใบลา\x3c/button>'
             + '\x3c/div>'
           : '')
@@ -1613,6 +1615,161 @@
     if(HOL.month < 1){ HOL.month = 12; HOL.year--; loadHolidays(); return; }
     if(HOL.month > 12){ HOL.month = 1; HOL.year++; loadHolidays(); return; }
     renderHolCalendar();
+  }
+
+  // ============================================================
+  // LIFF REQUEST EDITOR — แก้ไขคำขอของตนเองได้ทุก 4 ประเภท
+  // เฉพาะ SUBMITTED / L1_APPROVED; ตรวจสอบซ้ำที่ Backend ทุกครั้ง
+  // ============================================================
+  function ensureLiffRequestEditModal(){
+    if(document.getElementById('bpkLiffRequestEditModal')) return;
+    var html = '<div class="modal fade" id="bpkLiffRequestEditModal" tabindex="-1" aria-hidden="true">'
+      + '<div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg"><div class="modal-content" style="border:0;border-radius:18px;overflow:hidden">'
+      + '<div class="modal-header" style="background:var(--brand);color:#fff"><h5 class="modal-title" id="bpkLiffEditTitle">แก้ไขคำขอ</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="ปิด"></button></div>'
+      + '<div class="modal-body"><div class="alert alert-warning small py-2">แก้ไขได้เฉพาะคำขอที่ยังไม่อนุมัติครบทุกระดับ หากมีผู้อนุมัติไปแล้ว ระบบจะเริ่มขั้นตอนอนุมัติใหม่ตั้งแต่ระดับแรก</div>'
+      + '<div id="bpkLiffEditFields"></div><div class="mt-3"><label class="form-label fw-semibold">เพิ่ม/เปลี่ยนเอกสารแนบ (สูงสุดไฟล์ละ 5 MB)</label><input type="file" class="form-control" id="bpkLiffEditFiles" accept="image/*,application/pdf" multiple><div class="small text-muted mt-1" id="bpkLiffEditUploadStatus"></div></div></div>'
+      + '<div class="modal-footer"><button class="btn btn-light" data-bs-dismiss="modal">ปิด</button><button class="btn btn-primary" id="bpkLiffEditSave">บันทึกการแก้ไข</button></div>'
+      + '</div></div></div>';
+    $('body').append(html);
+    $('#bpkLiffEditSave').on('click', saveLiffRequestEdit);
+  }
+
+  function editField(label, id, value, type, extra){
+    type = type || 'text';
+    var val = value == null ? '' : String(value);
+    var safe = esc(val);
+    if(type === 'textarea') return '<div class="mb-2"><label class="form-label small mb-1">' + label + '</label><textarea class="form-control" id="' + id + '" rows="2">' + safe + '</textarea></div>';
+    return '<div class="mb-2"><label class="form-label small mb-1">' + label + '</label><input class="form-control" type="' + type + '" id="' + id + '" value="' + safe + '" ' + (extra || '') + '></div>';
+  }
+
+  function editSelect(label, id, options, value){
+    var html = '<div class="mb-2"><label class="form-label small mb-1">' + label + '</label><select class="form-select" id="' + id + '">';
+    options.forEach(function(o){ html += '<option value="' + esc(o.value) + '"' + (String(o.value) === String(value || '') ? ' selected' : '') + '>' + esc(o.label) + '</option>'; });
+    return html + '</select></div>';
+  }
+
+  function renderLiffRequestEditFields(d){
+    var html = '<div class="small text-muted mb-2">เลขที่คำขอ ' + esc(d.request_no || '') + ' · ' + esc(d.employee_name || '') + '</div>';
+    if(d.kind === 'LEAVE'){
+      html += editSelect('ประเภทการลา', 'bpkEdLeaveType', LF.types.map(function(t){return {value:t.id,label:t.name};}), d.leave_type_id);
+      html += '<div class="row g-2">'
+        + '<div class="col-6">' + editField('วันที่เริ่ม', 'bpkEdStart', d.start_date, 'date') + '</div>'
+        + '<div class="col-6">' + editField('วันที่สิ้นสุด', 'bpkEdEnd', d.end_date, 'date') + '</div></div>';
+      html += '<div class="row g-2"><div class="col-6">' + editSelect('รูปแบบเริ่ม', 'bpkEdStartHalf', [{value:'full',label:'เต็มวัน'},{value:'morning',label:'ครึ่งวันเช้า'},{value:'afternoon',label:'ครึ่งวันบ่าย'},{value:'hourly',label:'รายชั่วโมง'}], d.start_half || 'hourly') + '</div>'
+        + '<div class="col-6">' + editSelect('รูปแบบสิ้นสุด', 'bpkEdEndHalf', [{value:'full',label:'เต็มวัน'},{value:'morning',label:'ครึ่งวันเช้า'},{value:'afternoon',label:'ครึ่งวันบ่าย'},{value:'hourly',label:'รายชั่วโมง'}], d.end_half || d.start_half || 'hourly') + '</div></div>';
+      html += '<div class="row g-2" id="bpkEdLeaveTimeRow"><div class="col-6">' + editField('เวลาเริ่ม', 'bpkEdStartTime', d.start_time, 'time') + '</div><div class="col-6">' + editField('เวลาสิ้นสุด', 'bpkEdEndTime', d.end_time, 'time') + '</div></div>';
+      html += editField('เหตุผลการลา', 'bpkEdReason', d.reason, 'textarea') + editField('ผู้ติดต่อระหว่างลา', 'bpkEdContact', d.contact_during_leave, 'text');
+    } else if(d.kind === 'OUTING'){
+      html += '<div class="row g-2"><div class="col-6">' + editField('วันที่ออก', 'bpkEdStart', d.start_date, 'date') + '</div><div class="col-6">' + editField('วันที่กลับ', 'bpkEdEnd', d.end_date || d.start_date, 'date') + '</div></div>';
+      html += '<div class="row g-2"><div class="col-6">' + editField('เวลาออก', 'bpkEdStartTime', d.start_time, 'time') + '</div><div class="col-6">' + editField('เวลากลับ', 'bpkEdEndTime', d.end_time, 'time') + '</div></div>';
+      html += editField('เหตุผล', 'bpkEdReason', d.reason, 'textarea') + editField('สถานที่ที่ไป', 'bpkEdDestination', d.destination) + editField('ติดต่อได้ที่', 'bpkEdContact', d.contact_during_leave);
+    } else if(d.kind === 'OFFICIAL'){
+      html += editSelect('ประเภทการไปราชการ', 'bpkEdTripType', ['อบรม','สัมมนา','ประชุม','แข่งขัน','ศึกษาดูงาน','อื่นๆ'].map(function(x){return {value:x,label:x};}), d.trip_type);
+      html += editField('เรื่อง / หลักสูตร', 'bpkEdEventName', d.event_name) + editField('หน่วยงานผู้จัด', 'bpkEdOrganizer', d.organizer);
+      html += editField('สถานที่', 'bpkEdDestination', d.destination);
+      html += '<div class="row g-2"><div class="col-6">' + editField('วันที่เริ่ม', 'bpkEdStart', d.start_date, 'date') + '</div><div class="col-6">' + editField('วันที่สิ้นสุด', 'bpkEdEnd', d.end_date || d.start_date, 'date') + '</div></div>';
+      html += editField('พาหนะที่ใช้', 'bpkEdTransport', d.transportation) + editField('แหล่งค่าใช้จ่าย', 'bpkEdFunding', d.funding_source) + editField('ติดต่อได้ที่', 'bpkEdContact', d.contact_during_leave);
+    }
+    var attachments = d.attachments || [];
+    html += '<div class="mt-3"><div class="form-label small fw-semibold">เอกสารแนบเดิม — เลือกเก็บไฟล์ที่ต้องการไว้</div>';
+    if(attachments.length){
+      attachments.forEach(function(a,i){
+        html += '<div class="form-check border rounded-2 p-2 ps-5 mb-1"><input class="form-check-input bpk-ed-keep-att" type="checkbox" value="' + esc(a.id) + '" id="bpkEdAtt' + i + '" checked><label class="form-check-label small" for="bpkEdAtt' + i + '"><a target="_blank" rel="noopener" href="' + esc(a.url) + '">' + esc(a.name || 'ไฟล์แนบ') + '</a></label></div>';
+      });
+    } else html += '<div class="text-muted small">ไม่มีเอกสารแนบเดิม</div>';
+    if(d.kind === 'OFFICIAL' || d.kind === 'OUTING'){
+      if(d.official_order_attachment){
+        html += '<div class="form-check border rounded-2 p-2 ps-5 mt-2"><input class="form-check-input" type="checkbox" id="bpkEdKeepOrder" checked><label class="form-check-label small" for="bpkEdKeepOrder"><a target="_blank" rel="noopener" href="' + esc(d.official_order_attachment.url) + '">เก็บเอกสาร/คำสั่งเดิม: ' + esc(d.official_order_attachment.name || 'เปิดไฟล์') + '</a></label></div>';
+      }
+      html += '<div class="mt-2"><label class="form-label small">เพิ่ม/เปลี่ยนเอกสารหรือหนังสือคำสั่ง (ถ้ามี)</label><input type="file" class="form-control" id="bpkLiffEditOrderFile" accept="image/*,application/pdf"></div>';
+    }
+    return html + '</div>';
+  }
+
+  function openLiffRequestEditor(requestId){
+    ensureLiffRequestEditModal();
+    $('#bpkLiffEditFields').html('<div class="text-center py-4"><span class="spinner-border spinner-border-sm me-2"></span>กำลังโหลดข้อมูลคำขอ...</div>');
+    $('#bpkLiffEditUploadStatus').text('');
+    $('#bpkLiffEditFiles').val('');
+    api('liffGetRequestForEdit', LF.userId, requestId).then(function(r){
+      if(r.status !== 'success'){ toast('error', r.message || 'ไม่สามารถแก้ไขรายการนี้ได้'); return; }
+      LF.requestEditor = r.data;
+      $('#bpkLiffEditTitle').text('แก้ไข' + (r.data.kind === 'LEAVE' ? 'ใบลา' : (r.data.kind === 'OFFICIAL' ? 'คำขอไปราชการ' : 'คำขอออกนอกบริเวณ')));
+      $('#bpkLiffEditFields').html(renderLiffRequestEditFields(r.data));
+      $('#bpkEdLeaveModeHint').remove();
+      $('#bpkEdStartHalf').on('change', function(){ $('#bpkEdLeaveTimeRow').toggle(this.value === 'hourly'); });
+      if(document.getElementById('bpkEdStartHalf')) $('#bpkEdLeaveTimeRow').toggle($('#bpkEdStartHalf').val() === 'hourly');
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('bpkLiffRequestEditModal')).show();
+    }).catch(function(){ toast('error','โหลดข้อมูลคำขอไม่สำเร็จ'); });
+  }
+
+  function bpkReadFileAsBase64(file){
+    return new Promise(function(resolve,reject){
+      var reader = new FileReader();
+      reader.onload = function(e){ resolve(String(e.target.result).split(',')[1] || ''); };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function bpkUploadEditFiles(files){
+    var list = Array.prototype.slice.call(files || []);
+    if(list.some(function(f){ return f.size > 5*1024*1024; })) return Promise.reject(new Error('ไฟล์แนบต้องมีขนาดไม่เกิน 5 MB ต่อไฟล์'));
+    return Promise.all(list.map(function(file){
+      return bpkReadFileAsBase64(file).then(function(base64){
+        return api('liffUploadAttachment', LF.userId, base64, file.name, file.type).then(function(r){
+          if(r.status !== 'success' || !r.file_id) throw new Error(r.message || 'อัปโหลดไฟล์ไม่สำเร็จ');
+          return r.file_id;
+        });
+      });
+    }));
+  }
+
+  function saveLiffRequestEdit(){
+    var d = LF.requestEditor;
+    if(!d) return;
+    var obj = {};
+    if(d.kind === 'LEAVE'){
+      obj = {
+        leave_type_id: $('#bpkEdLeaveType').val(), start_date: $('#bpkEdStart').val(), end_date: $('#bpkEdEnd').val(),
+        start_half: $('#bpkEdStartHalf').val(), end_half: $('#bpkEdEndHalf').val(),
+        start_time: $('#bpkEdStartTime').val(), end_time: $('#bpkEdEndTime').val(),
+        reason: $('#bpkEdReason').val().trim(), contact_during_leave: $('#bpkEdContact').val().trim()
+      };
+    } else if(d.kind === 'OUTING'){
+      obj = { start_date: $('#bpkEdStart').val(), end_date: $('#bpkEdEnd').val(), start_time: $('#bpkEdStartTime').val(), end_time: $('#bpkEdEndTime').val(), reason: $('#bpkEdReason').val().trim(), destination: $('#bpkEdDestination').val().trim(), contact_during_leave: $('#bpkEdContact').val().trim() };
+    } else if(d.kind === 'OFFICIAL'){
+      obj = { trip_type: $('#bpkEdTripType').val(), event_name: $('#bpkEdEventName').val().trim(), organizer: $('#bpkEdOrganizer').val().trim(), destination: $('#bpkEdDestination').val().trim(), start_date: $('#bpkEdStart').val(), end_date: $('#bpkEdEnd').val(), transportation: $('#bpkEdTransport').val().trim(), funding_source: $('#bpkEdFunding').val().trim(), contact_during_leave: $('#bpkEdContact').val().trim() };
+    }
+    var kept = $('.bpk-ed-keep-att:checked').map(function(){ return this.value; }).get();
+    var files = document.getElementById('bpkLiffEditFiles').files;
+    var orderFile = document.getElementById('bpkLiffEditOrderFile');
+    if(!obj.start_date || !obj.end_date){ toast('error','กรุณาระบุวันที่ให้ครบ'); return; }
+    $('#bpkLiffEditSave').prop('disabled', true).text('กำลังบันทึก...');
+    $('#bpkLiffEditUploadStatus').text('กำลังเตรียมไฟล์แนบ...');
+    Promise.all([
+      bpkUploadEditFiles(files),
+      (orderFile && orderFile.files && orderFile.files[0]) ? bpkUploadEditFiles(orderFile.files) : Promise.resolve([])
+    ]).then(function(uploaded){
+      obj.attachment_file_ids = kept.concat(uploaded[0]);
+      if(d.kind === 'OFFICIAL' || d.kind === 'OUTING'){
+        var keepOrder = $('#bpkEdKeepOrder').length ? $('#bpkEdKeepOrder').is(':checked') : !!d.official_order_file_id;
+        obj.official_order_file_id = uploaded[1][0] || (keepOrder ? (d.official_order_file_id || '') : '');
+      }
+      return api('liffUpdateRequestDetails', LF.userId, d.id, obj);
+    }).then(function(r){
+      $('#bpkLiffEditSave').prop('disabled', false).text('บันทึกการแก้ไข');
+      $('#bpkLiffEditUploadStatus').text('');
+      if(r.status !== 'success'){ toast('error', r.message || 'บันทึกการแก้ไขไม่สำเร็จ'); return; }
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('bpkLiffRequestEditModal')).hide();
+      Swal.fire({ icon:'success', title:'แก้ไขคำขอเรียบร้อย', text:r.reset_approvals ? 'ระบบส่งคำขอกลับไปเริ่มอนุมัติใหม่ตั้งแต่ระดับ 1' : 'บันทึกข้อมูลเรียบร้อย', timer:2400, showConfirmButton:false });
+      LF.requestEditor = null;
+      loadHistory(); loadOutingHistory(); loadOfficialHistory(); loadBalanceMap(onTypeChange);
+    }).catch(function(err){
+      $('#bpkLiffEditSave').prop('disabled', false).text('บันทึกการแก้ไข');
+      $('#bpkLiffEditUploadStatus').text('');
+      toast('error', err.message || 'บันทึกการแก้ไขไม่สำเร็จ');
+    });
   }
   </script>
 </body>
