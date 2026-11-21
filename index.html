@@ -309,7 +309,7 @@
         <label class="form-label">เรื่อง / หลักสูตร</label>
         <input class="form-control mb-2" id="ofEventName" placeholder="เช่น อบรมเชิงปฏิบัติการการจัดการเรียนรู้เชิงรุก">
         <label class="form-label">จัดโดย <span class="text-muted" style="font-weight:400">(ไม่บังคับ)</span></label>
-        <input class="form-control mb-2" id="ofOrganizer" placeholder="เช่น สพป.สุราษฎร์ธานี เขต 3">
+        <input class="form-control mb-2" id="ofOrganizer" placeholder="เช่น สพป.สุราษฎร์ธานี เขต 3>
         <label class="form-label">สถานที่</label>
         <input class="form-control mb-2" id="ofDest" placeholder="เช่น โรงแรม.......">
         <div class="row g-2">
@@ -572,40 +572,28 @@
     $('#btnSubmitOfficial').on('click', submitOfficial);
     $('#ofAttach').on('change', uploadOfficialAttach);
     $('#ofOfficialOrderAttach').on('change', uploadOfficialOrderAttach);
+    ['leave','outing','official'].forEach(function(kind){
+      var modalId = kind === 'leave' ? 'modalLeave' : (kind === 'outing' ? 'modalOuting' : 'modalOfficial');
+      var modal = document.getElementById(modalId);
+      if(modal) modal.addEventListener('hidden.bs.modal', function(){
+        var ids = kind === 'leave' ? ['nlAttach'] : (kind === 'outing' ? ['otAttach'] : ['ofAttach','ofOfficialOrderAttach']);
+        ids.forEach(function(id){ var input=document.getElementById(id); if(input){ input.value=''; if(window.BPKAttachmentPreviewClear) BPKAttachmentPreviewClear(id); } });
+        if(kind === 'leave') $('#nlAttachStatus').text('');
+        if(kind === 'outing') $('#otAttachStatus').text('');
+        if(kind === 'official') $('#ofAttachStatus,#ofOfficialOrderAttachStatus').text('');
+      });
+    });
   });
 
   /** แนบเอกสารประกอบคำขอออกนอกโรงเรียน (เช่น หนังสือเชิญ / คำสั่งไปราชการ) */
   function uploadOutingAttach(ev){
-    var file = ev.target.files[0];
-    if(!file){ $('#otAttachId').val(''); $('#otAttachStatus').text(''); return; }
-    if(file.size > 5*1024*1024){
-      toast('error','ไฟล์ใหญ่เกิน 5MB');
-      ev.target.value = ''; $('#otAttachId').val(''); $('#otAttachStatus').text('');
-      return;
+    var files = Array.prototype.slice.call(ev.target.files || []);
+    $('#otAttachId').val('');
+    if(!files.length){ $('#otAttachStatus').text(''); return; }
+    if(files.some(function(file){ return file.size > 5*1024*1024; })){
+      toast('error','ไฟล์แนบต้องมีขนาดไม่เกิน 5MB ต่อไฟล์'); ev.target.value=''; $('#otAttachStatus').text(''); return;
     }
-    var reader = new FileReader();
-    reader.onload = function(e){
-      var base64 = e.target.result.split(',')[1];
-      $('#otAttachStatus').text('กำลังอัปโหลด...');
-      $('#btnSubmitOuting').prop('disabled', true);
-      api('liffUploadAttachment', LF.userId, base64, file.name, file.type).then(function(r){
-        $('#btnSubmitOuting').prop('disabled', false);
-        if(r.status === 'success'){
-          $('#otAttachId').val(r.file_id);
-          $('#otAttachStatus').text('แนบไฟล์แล้ว: ' + file.name);
-        } else {
-          $('#otAttachId').val('');
-          $('#otAttachStatus').text('อัปโหลดไม่สำเร็จ');
-          toast('error', r.message || 'อัปโหลดไม่สำเร็จ');
-        }
-      }).catch(function(){
-        $('#btnSubmitOuting').prop('disabled', false);
-        $('#otAttachId').val('');
-        $('#otAttachStatus').text('อัปโหลดไม่สำเร็จ');
-        toast('error','อัปโหลดไม่สำเร็จ');
-      });
-    };
-    reader.readAsDataURL(file);
+    $('#otAttachStatus').text(files.length + ' ไฟล์พร้อมแนบ (ยังไม่อัปโหลด)');
   }
 
   /* ── ขออนุญาตออกนอกบริเวณโรงเรียน ── */
@@ -618,34 +606,35 @@
 
   function submitOuting(){
     prefillOutingForm();
-    var attachId = $('#otAttachId').val();
+    var files = document.getElementById('otAttach').files;
     var obj = {
-      attachment_file_ids: attachId ? [attachId] : [],
+      attachment_file_ids: [],
       start_date: $('#otStart').val(),
       end_date: $('#otMulti').is(':checked') ? $('#otEnd').val() : $('#otStart').val(),
-      start_time: $('#otStartTime').val(),
-      end_time: $('#otEndTime').val(),
-      reason: $('#otReason').val().trim(),
-      destination: $('#otDest').val().trim(),
+      start_time: $('#otStartTime').val(), end_time: $('#otEndTime').val(),
+      reason: $('#otReason').val().trim(), destination: $('#otDest').val().trim(),
       contact_during_leave: $('#otContact').val().trim()
     };
     if(!obj.reason){ toast('error','กรุณาระบุเหตุผล'); return; }
     if(!obj.destination){ toast('error','กรุณาระบุสถานที่ที่จะไป'); return; }
-
     setBtnLoading('#btnSubmitOuting', true);
-    api('liffSubmitOuting', LF.userId, obj).then(function(r){
+    $('#otAttachStatus').text(files && files.length ? 'กำลังอัปโหลดไฟล์เมื่อยืนยัน...' : '');
+    bpkUploadPendingFiles(files).then(function(ids){
+      obj.attachment_file_ids = ids;
+      return api('liffSubmitOuting', LF.userId, obj);
+    }).then(function(r){
       setBtnLoading('#btnSubmitOuting', false);
       if(r.status !== 'success'){ toast('error', r.message); return; }
       Swal.fire({ icon:'success', title:'ยื่นคำขอแล้ว', text:'เลขที่ ' + r.request_no, timer:2200, showConfirmButton:false });
-      $('#otReason,#otDest,#otContact').val('');
-      $('#otMulti').prop('checked', false); $('#otEndBox').addClass('hidden'); setDateField('#otEnd', '');
-      $('#otAttach').val(''); $('#otAttachId').val(''); $('#otAttachStatus').text('');
+      $('#otReason,#otDest,#otContact').val(''); $('#otMulti').prop('checked', false); $('#otEndBox').addClass('hidden'); setDateField('#otEnd', '');
+      $('#otAttach').val(''); $('#otAttachId').val(''); $('#otAttachStatus').text(''); if(window.BPKAttachmentPreviewClear) BPKAttachmentPreviewClear('otAttach');
       loadOutingHistory();
     }).catch(function(err){
-      setBtnLoading('#btnSubmitOuting', false);
+      setBtnLoading('#btnSubmitOuting', false); $('#otAttachStatus').text('');
       toast('error', err.message || 'ยื่นคำขอไม่สำเร็จ');
     });
   }
+
 
   function loadOutingHistory(){
     prefillOutingForm();
@@ -682,66 +671,20 @@
 
   /** แนบเอกสารประกอบคำขอไปราชการ (เช่น หนังสือเชิญ / โครงการ) */
   function uploadOfficialAttach(ev){
-    var file = ev.target.files[0];
-    if(!file){ $('#ofAttachId').val(''); $('#ofAttachStatus').text(''); return; }
-    if(file.size > 5*1024*1024){
-      toast('error','ไฟล์ใหญ่เกิน 5MB');
-      ev.target.value = ''; $('#ofAttachId').val(''); $('#ofAttachStatus').text('');
-      return;
+    var files = Array.prototype.slice.call(ev.target.files || []);
+    $('#ofAttachId').val('');
+    if(!files.length){ $('#ofAttachStatus').text(''); return; }
+    if(files.some(function(file){ return file.size > 5*1024*1024; })){
+      toast('error','ไฟล์แนบต้องมีขนาดไม่เกิน 5MB ต่อไฟล์'); ev.target.value=''; $('#ofAttachStatus').text(''); return;
     }
-    var reader = new FileReader();
-    reader.onload = function(e){
-      var base64 = e.target.result.split(',')[1];
-      $('#ofAttachStatus').text('กำลังอัปโหลด...');
-      $('#btnSubmitOfficial').prop('disabled', true);
-      api('liffUploadAttachment', LF.userId, base64, file.name, file.type).then(function(r){
-        $('#btnSubmitOfficial').prop('disabled', false);
-        if(r.status === 'success'){
-          $('#ofAttachId').val(r.file_id);
-          $('#ofAttachStatus').text('แนบไฟล์แล้ว: ' + file.name);
-        } else {
-          $('#ofAttachId').val('');
-          $('#ofAttachStatus').text('อัปโหลดไม่สำเร็จ');
-          toast('error', r.message || 'อัปโหลดไม่สำเร็จ');
-        }
-      }).catch(function(){
-        $('#btnSubmitOfficial').prop('disabled', false);
-        $('#ofAttachId').val('');
-        $('#ofAttachStatus').text('อัปโหลดไม่สำเร็จ');
-        toast('error','อัปโหลดไม่สำเร็จ');
-      });
-    };
-    reader.readAsDataURL(file);
+    $('#ofAttachStatus').text(files.length + ' ไฟล์พร้อมแนบ (ยังไม่อัปโหลด)');
   }
-
-
-  /** แนบหนังสือไปราชการแยกจากเอกสารประกอบคำขอ */
   function uploadOfficialOrderAttach(ev){
-    var file = ev.target.files[0];
-    if(!file){ $('#ofOfficialOrderAttachId').val(''); $('#ofOfficialOrderAttachStatus').text(''); return; }
-    if(file.size > 5*1024*1024){
-      toast('error','ไฟล์หนังสือไปราชการใหญ่เกิน 5MB');
-      ev.target.value = ''; $('#ofOfficialOrderAttachId').val(''); $('#ofOfficialOrderAttachStatus').text(''); return;
-    }
-    var reader = new FileReader();
-    reader.onload = function(e){
-      var base64 = e.target.result.split(',')[1];
-      $('#ofOfficialOrderAttachStatus').text('กำลังอัปโหลดหนังสือไปราชการ...');
-      $('#btnSubmitOfficial').prop('disabled', true);
-      api('liffUploadAttachment', LF.userId, base64, file.name, file.type).then(function(r){
-        $('#btnSubmitOfficial').prop('disabled', false);
-        if(r.status === 'success'){
-          $('#ofOfficialOrderAttachId').val(r.file_id); $('#ofOfficialOrderAttachStatus').text('แนบหนังสือไปราชการแล้ว');
-        } else {
-          $('#ofOfficialOrderAttachId').val(''); $('#ofOfficialOrderAttachStatus').text('อัปโหลดไม่สำเร็จ');
-          toast('error', r.message || 'อัปโหลดไม่สำเร็จ');
-        }
-      }).catch(function(){
-        $('#btnSubmitOfficial').prop('disabled', false); $('#ofOfficialOrderAttachId').val('');
-        $('#ofOfficialOrderAttachStatus').text('อัปโหลดไม่สำเร็จ'); toast('error','อัปโหลดไม่สำเร็จ');
-      });
-    };
-    reader.readAsDataURL(file);
+    var file = ev.target.files && ev.target.files[0];
+    $('#ofOfficialOrderAttachId').val('');
+    if(!file){ $('#ofOfficialOrderAttachStatus').text(''); return; }
+    if(file.size > 5*1024*1024){ toast('error','ไฟล์หนังสือไปราชการใหญ่เกิน 5MB'); ev.target.value=''; $('#ofOfficialOrderAttachStatus').text(''); return; }
+    $('#ofOfficialOrderAttachStatus').text('หนังสือพร้อมแนบ (ยังไม่อัปโหลด)');
   }
 
   /* ── ไปราชการ ── */
@@ -753,38 +696,38 @@
 
   function submitOfficial(){
     prefillOfficialForm();
-    var attachId = $('#ofAttachId').val();
+    var files = document.getElementById('ofAttach').files;
+    var orderFiles = document.getElementById('ofOfficialOrderAttach').files;
     var obj = {
-      attachment_file_ids: attachId ? [attachId] : [],
-      official_order_file_id: $('#ofOfficialOrderAttachId').val() || '',
-      trip_type: $('#ofTripType').val(),
-      event_name: $('#ofEventName').val().trim(),
-      organizer: $('#ofOrganizer').val().trim(),
-      destination: $('#ofDest').val().trim(),
-      start_date: $('#ofStartDate').val(),
-      end_date: $('#ofEndDate').val(),
-      transportation: $('#ofTransport').val().trim(),
-      funding_source: $('#ofFunding').val().trim(),
-        contact_during_leave: $('#ofContact').val().trim()
+      attachment_file_ids: [], official_order_file_id: '',
+      trip_type: $('#ofTripType').val(), event_name: $('#ofEventName').val().trim(),
+      organizer: $('#ofOrganizer').val().trim(), destination: $('#ofDest').val().trim(),
+      start_date: $('#ofStartDate').val(), end_date: $('#ofEndDate').val(),
+      transportation: $('#ofTransport').val().trim(), funding_source: $('#ofFunding').val().trim(),
+      contact_during_leave: $('#ofContact').val().trim()
     };
     if(!obj.trip_type){ toast('error','กรุณาเลือกประเภทการไปราชการ'); return; }
     if(!obj.event_name){ toast('error','กรุณาระบุเรื่อง/หลักสูตร'); return; }
     if(!obj.destination){ toast('error','กรุณาระบุสถานที่'); return; }
-
     setBtnLoading('#btnSubmitOfficial', true);
-    api('liffSubmitOfficialTrip', LF.userId, obj).then(function(r){
+    $('#ofAttachStatus,#ofOfficialOrderAttachStatus').text('');
+    Promise.all([bpkUploadPendingFiles(files), bpkUploadPendingFiles(orderFiles)]).then(function(uploaded){
+      obj.attachment_file_ids = uploaded[0]; obj.official_order_file_id = uploaded[1][0] || '';
+      return api('liffSubmitOfficialTrip', LF.userId, obj);
+    }).then(function(r){
       setBtnLoading('#btnSubmitOfficial', false);
       if(r.status !== 'success'){ toast('error', r.message); return; }
       Swal.fire({ icon:'success', title:'ยื่นคำขอแล้ว', text:'เลขที่ ' + r.request_no, timer:2200, showConfirmButton:false });
       $('#ofTripType').val(''); $('#ofEventName,#ofOrganizer,#ofDest,#ofTransport,#ofFunding,#ofContact').val('');
-      $('#ofAttach').val(''); $('#ofAttachId').val(''); $('#ofAttachStatus').text('');
-      $('#ofOfficialOrderAttach').val(''); $('#ofOfficialOrderAttachId').val(''); $('#ofOfficialOrderAttachStatus').text('');
+      $('#ofAttach').val(''); $('#ofAttachId').val(''); $('#ofAttachStatus').text(''); if(window.BPKAttachmentPreviewClear) BPKAttachmentPreviewClear('ofAttach');
+      $('#ofOfficialOrderAttach').val(''); $('#ofOfficialOrderAttachId').val(''); $('#ofOfficialOrderAttachStatus').text(''); if(window.BPKAttachmentPreviewClear) BPKAttachmentPreviewClear('ofOfficialOrderAttach');
       loadOfficialHistory();
     }).catch(function(err){
-      setBtnLoading('#btnSubmitOfficial', false);
+      setBtnLoading('#btnSubmitOfficial', false); $('#ofAttachStatus,#ofOfficialOrderAttachStatus').text('');
       toast('error', err.message || 'ยื่นคำขอไม่สำเร็จ');
     });
   }
+
 
   function loadOfficialHistory(){
     prefillOfficialForm();
@@ -1136,26 +1079,11 @@
   }
 
   function uploadAttach(ev){
-    var file = ev.target.files[0]; if(!file) return;
-    if(file.size > 5*1024*1024){ toast('error','ไฟล์ใหญ่เกิน 5MB'); return; }
-    var reader = new FileReader();
-    reader.onload = function(e){
-      $('#nlAttachStatus').html('<span class="spin-sm"></span><span>กำลังอัพโหลด...</span>');
-      $('#uploadBar').show();
-      api('liffUploadAttachment', LF.userId, e.target.result.split(',')[1], file.name, file.type).then(function(r){
-        $('#uploadBar').hide();
-        if(r.status === 'success'){
-          $('#nlAttachId').val(r.file_id);
-          $('#nlAttachStatus').html('<i class="fi fi-rr-check-circle" style="color:#10b981"></i><span>แนบไฟล์แล้ว</span>');
-        } else {
-          $('#nlAttachStatus').html('<i class="fi fi-rr-cross-circle" style="color:#ef4444"></i><span>อัพโหลดไม่สำเร็จ</span>');
-        }
-      }).catch(function(){
-        $('#uploadBar').hide();
-        $('#nlAttachStatus').html('<i class="fi fi-rr-cross-circle" style="color:#ef4444"></i><span>อัพโหลดไม่สำเร็จ</span>');
-      });
-    };
-    reader.readAsDataURL(file);
+    var file = ev.target.files && ev.target.files[0];
+    if(!file){ $('#nlAttachStatus').html(''); return; }
+    if(file.size > 5*1024*1024){ toast('error','ไฟล์ใหญ่เกิน 5MB'); ev.target.value=''; $('#nlAttachStatus').html(''); return; }
+    $('#nlAttachId').val('');
+    $('#nlAttachStatus').text('ไฟล์พร้อมแนบ (ยังไม่อัปโหลด)');
   }
 
   /* ── โหมดแก้ไขใบลา (เฉพาะใบที่ยังไม่มีใครอนุมัติ) ── */
@@ -1193,7 +1121,7 @@
   }
 
   function resetLeaveForm(){
-    $('#nlReason').val(''); $('#nlContact').val(''); $('#nlAttachId').val(''); $('#nlAttach').val('');
+    $('#nlReason').val(''); $('#nlContact').val(''); $('#nlAttachId').val(''); $('#nlAttach').val(''); if(window.BPKAttachmentPreviewClear) BPKAttachmentPreviewClear('nlAttach');
     $('#nlAttachStatus').html(''); $('#uploadBar').hide(); $('#nlDays').text('-'); $('#nlDaysHint').text('');
     setDateField('#nlStart', ''); setDateField('#nlEnd', ''); $('#nlStartTime').val(''); $('#nlEndTime').val('');
     prefillLeaveTimes();
@@ -1215,10 +1143,13 @@
     };
 
     var editing = LF.editId;
+    var pendingFile = document.getElementById('nlAttach').files && document.getElementById('nlAttach').files[0];
     setBtnLoading('#btnSubmitLeave', true);
-    var call = editing
-      ? api('liffUpdateLeave', LF.userId, editing, obj)
-      : api('liffSubmitLeave', LF.userId, obj);
+    $('#nlAttachStatus').text(pendingFile ? 'กำลังอัปโหลดไฟล์เมื่อยืนยัน...' : '');
+    var call = bpkUploadPendingFiles(pendingFile ? [pendingFile] : []).then(function(ids){
+      if(ids.length) obj.attachment_file_ids = ids;
+      return editing ? api('liffUpdateLeave', LF.userId, editing, obj) : api('liffSubmitLeave', LF.userId, obj);
+    });
 
     call.then(function(r){
       setBtnLoading('#btnSubmitLeave', false);
@@ -1703,6 +1634,20 @@
     }).catch(function(){ toast('error','โหลดข้อมูลคำขอไม่สำเร็จ'); });
   }
 
+  function bpkUploadPendingFiles(files){
+    var list = Array.prototype.slice.call(files || []);
+    if(list.some(function(file){ return file.size > 5*1024*1024; })) return Promise.reject(new Error('ไฟล์แนบต้องมีขนาดไม่เกิน 5 MB ต่อไฟล์'));
+    return Promise.all(list.map(function(file){
+      return bpkReadFileAsBase64(file).then(function(base64){
+        return api('liffUploadAttachment', LF.userId, base64, file.name, file.type).then(function(r){
+          if(r.status !== 'success' || !r.file_id) throw new Error(r.message || 'อัปโหลดไฟล์ไม่สำเร็จ');
+          return r.file_id;
+        });
+      });
+    }));
+  }
+
+
   function bpkReadFileAsBase64(file){
     return new Promise(function(resolve,reject){
       var reader = new FileReader();
@@ -1772,5 +1717,95 @@
     });
   }
   </script>
+<script>
+(function(){
+  'use strict';
+  var ids = ['nlAttach','otAttach','ofAttach','ofOfficialOrderAttach','bpkLiffEditFiles','bpkLiffEditOrderFile'];
+  var urls = new WeakMap();
+  function revoke(input){
+    var old = urls.get(input);
+    if(old && old.length) old.forEach(function(url){ try{ URL.revokeObjectURL(url); }catch(e){} });
+    urls.delete(input);
+  }
+  function ensureContainer(input){
+    var id = input.id + 'Preview';
+    var box = document.getElementById(id);
+    if(!box){
+      box = document.createElement('div'); box.id=id; box.className='bpk-file-preview-list mt-2';
+      input.insertAdjacentElement('afterend', box);
+    }
+    return box;
+  }
+  function bytes(n){
+    if(n < 1024) return n + ' B';
+    if(n < 1024*1024) return (n/1024).toFixed(1) + ' KB';
+    return (n/1024/1024).toFixed(2) + ' MB';
+  }
+  var pdfjsPromise=null;
+  function loadPdfJs(){
+    if(window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+    if(pdfjsPromise) return pdfjsPromise;
+    pdfjsPromise=new Promise(function(resolve,reject){
+      var script=document.createElement('script'); script.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'; script.async=true;
+      script.onload=function(){ if(window.pdfjsLib){ window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; resolve(window.pdfjsLib); } else reject(new Error('PDF.js unavailable')); };
+      script.onerror=function(){ reject(new Error('PDF.js failed to load')); }; document.head.appendChild(script);
+    }); return pdfjsPromise;
+  }
+  function renderPdfFirstPage(url,canvas,status){
+    loadPdfJs().then(function(lib){ return lib.getDocument({url:url}).promise; }).then(function(pdf){
+      return pdf.getPage(1).then(function(page){
+        var base=page.getViewport({scale:1}); var hostWidth=canvas.parentElement.clientWidth||800; var scale=Math.min(1.5,Math.max(.5,(hostWidth-20)/base.width)); var viewport=page.getViewport({scale:scale});
+        var ctx=canvas.getContext('2d'); canvas.width=Math.ceil(viewport.width); canvas.height=Math.ceil(viewport.height); canvas.style.width='100%'; canvas.style.height='auto';
+        return page.render({canvasContext:ctx,viewport:viewport}).promise.then(function(){ status.textContent='แสดงตัวอย่างหน้าแรกของ PDF'; });
+      });
+    }).catch(function(){ status.textContent='ไม่สามารถแสดงตัวอย่าง PDF ได้ในขณะนี้ กรุณากด “เปิด PDF ฉบับเต็ม”'; canvas.style.display='none'; });
+  }
+  function render(input){
+    var box=ensureContainer(input); revoke(input); box.replaceChildren();
+    var files=Array.prototype.slice.call(input.files || []);
+    if(!files.length){ box.style.display='none'; return; }
+    box.style.display='block';
+    var clearBtn=document.createElement('button'); clearBtn.type='button'; clearBtn.className='btn btn-sm btn-outline-secondary mb-2'; clearBtn.textContent='ล้างไฟล์ที่เลือก';
+    clearBtn.addEventListener('click',function(){ input.value=''; clear(input,false); });
+    box.append(clearBtn);
+    files.forEach(function(file){
+      var card=document.createElement('div'); card.className='bpk-file-preview-card border rounded-3 p-2 mb-2';
+      var head=document.createElement('div'); head.className='d-flex align-items-center justify-content-between gap-2 mb-2';
+      var meta=document.createElement('div'); meta.className='small text-break';
+      var name=document.createElement('div'); name.className='fw-semibold'; name.textContent=file.name;
+      var size=document.createElement('div'); size.className='text-muted'; size.textContent=(file.type || 'ไฟล์')+' · '+bytes(file.size);
+      meta.append(name,size); head.append(meta); card.append(head);
+      var url=URL.createObjectURL(file); var current=urls.get(input)||[]; current.push(url); urls.set(input,current);
+      var type=file.type || '';
+      if(type.indexOf('image/')===0 || /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(file.name)){
+        var img=document.createElement('img'); img.src=url; img.alt=file.name; img.className='bpk-file-preview-image'; img.loading='lazy';
+        img.addEventListener('click',function(){ window.open(url,'_blank','noopener'); }); card.append(img);
+      } else if(type==='application/pdf' || /\.pdf$/i.test(file.name)){
+        var pdfBox=document.createElement('div'); pdfBox.className='bpk-file-preview-pdf';
+        var canvas=document.createElement('canvas'); canvas.className='bpk-file-preview-pdf-canvas'; canvas.setAttribute('aria-label','ตัวอย่างหน้าแรกของ PDF');
+        var status=document.createElement('div'); status.className='small text-muted p-3 text-center'; status.textContent='กำลังสร้างตัวอย่าง PDF…';
+        pdfBox.append(canvas,status); card.append(pdfBox);
+        var open=document.createElement('a'); open.href=url; open.target='_blank'; open.rel='noopener'; open.className='small d-inline-block mt-2'; open.textContent='เปิด PDF ฉบับเต็ม'; card.append(open);
+        renderPdfFirstPage(url,canvas,status);
+      } else {
+        var fallback=document.createElement('div'); fallback.className='text-muted small p-3 text-center'; fallback.textContent='ไฟล์นี้ไม่รองรับการแสดงตัวอย่างในเบราว์เซอร์'; card.append(fallback);
+      }
+      box.append(card);
+    });
+  }
+  function clear(input,clearSelection){
+    revoke(input); if(clearSelection) input.value=''; var box=document.getElementById(input.id+'Preview'); if(box){ box.replaceChildren(); box.style.display='none'; }
+  }
+  function init(){
+    var style=document.createElement('style'); style.textContent='.bpk-file-preview-list{display:none}.bpk-file-preview-card{background:var(--bs-body-bg,#fff)}.bpk-file-preview-image{display:block;max-width:100%;max-height:340px;object-fit:contain;margin:0 auto;border-radius:.5rem;cursor:zoom-in;background:#f8fafc}.bpk-file-preview-pdf{display:block;width:100%;max-height:65vh;overflow:auto;border:1px solid #dee2e6;border-radius:.5rem;background:#f8fafc}.bpk-file-preview-pdf-canvas{display:block;max-width:100%;margin:0 auto;background:#fff'; document.head.appendChild(style);
+    ids.forEach(function(id){ var input=document.getElementById(id); if(input) ensureContainer(input); });
+    document.addEventListener('change',function(ev){ var input=ev.target; if(input && input.tagName==='INPUT' && input.type==='file' && ids.indexOf(input.id)!==-1) render(input); });
+    document.addEventListener('hidden.bs.modal',function(ev){ var modal=ev.target; if(!modal || !modal.classList || !modal.classList.contains('modal')) return; ids.forEach(function(id){var input=document.getElementById(id); if(input && modal.contains(input)) clear(input,true); }); });
+    document.addEventListener('shown.bs.modal',function(ev){ var modal=ev.target; if(!modal || !modal.classList || !modal.classList.contains('modal')) return; ids.forEach(function(id){var input=document.getElementById(id); if(input && modal.contains(input) && input.files && input.files.length) render(input); }); });
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();
+  window.BPKAttachmentPreviewClear=function(id){ var input=document.getElementById(id); if(input) clear(input); };
+})();
+</script>
 </body>
 </html>
